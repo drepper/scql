@@ -90,7 +90,7 @@ class Rewrite(ast.NodeTransformer):
       case _:
         return (self.visit(tree), [])
   def format_ident(self, alias:str):
-    """Create list with two """
+    """Return tuple consisting of object name and its namespace."""
     orig = self.idmap.rget(alias).split('::')
     return ast.Constant(orig[-1]), ast.Constant('::'.join(orig[:-1]))
 
