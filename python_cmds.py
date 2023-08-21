@@ -43,12 +43,20 @@ class Rewrite(ast.NodeTransformer):
     """Called for each ast.Assign instance.  Detect assignment to an aliased identifier.  Recognize sequences of binary OR
     expressions as a pipeline of computations."""
     match node:
-      case ast.Assign([ ast.Name(ident, ast.Store()) ], ast.BinOp(left, ast.BitOr(), right)) if self.idmap.has(ident):
+      case ast.Assign([ ast.Name(ident, ast.Store()) ], ast.BinOp(left, ast.BitOr(), right)) if self.idmap.has(ident) and self.head_data_object(left):
         return ast.Call(ast.Name('WriteTable', ast.Load()), [ ast.Name(self.idmap.rget(ident), ast.Load()), self.get_sequence(left, right) ], [])
       case ast.Assign([ ast.Name(ident, ast.Store()) ], value) if self.idmap.has(ident):
         return ast.Call(ast.Name('WriteTable', ast.Load()), [ ast.Name(self.idmap.rget(ident), ast.Load()), self.visit(value) ], [])
       case _:
         return node
+  def head_data_object(self, tree:ast.AST):
+    match tree:
+      case ast.Name(ident, ast.Load()):
+        return self.idmap.has(ident)
+      case ast.BinOp(left, ast.BitOr(), right):
+        return self.head_data_object(left)
+      case _:
+        return False
   def get_sequence(self, tree:ast.AST, right:ast.AST):
     """Recursion start to transform AST to create computation pipelines."""
     head, args = self.get_sequence_rec(tree)
