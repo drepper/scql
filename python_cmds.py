@@ -118,8 +118,8 @@ def to_standard_python(source:str):
           while off < len(line):
             if line[off].isalnum():
               off += 1
-            elif line[off] == ':' and off + 1 < len(line) and line[off+1] == ':':
-              off += 2
+            elif line[off:off+2] == '::' and len(line) - off > 2 and line[off+2].isalpha():
+              off += 3
             else:
               break
           alias = idmap.get(line[offset:off])
