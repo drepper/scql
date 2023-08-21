@@ -4,6 +4,10 @@ special object types, e.g., named data objects in a namespace."""
 import ast
 import uuid
 
+
+__all__ = [ "to_standard_python" ]
+
+
 class Idmap:
   """Simple class to create and provide access to randomly generated aliases for input names."""
   def __init__(self):
@@ -27,16 +31,17 @@ class Idmap:
   def __iter__(self):
     return self.idmap.__iter__()
 
+
 class Rewrite(ast.NodeTransformer):
   """Extension of the standard library NodeTransformer class which replaces read references to the aliases identifiers
-  with calls to ReadTable and write references with calls to WriteTable."""
+  with calls to 'read_tabl'e and write references with calls to 'write_table'."""
   def __init__(self, idmap:Idmap):
     self.idmap = idmap
   def visit_Name(self, node): # pylint: disable=invalid-name ; this is an overloaded function
     """Called for each ast.Name instance.  Detect alias uses."""
     match node:
       case ast.Name(ident, ast.Load()) if self.idmap.has(ident):
-        return ast.Call(ast.Name('ReadTable', ast.Load()), [ *self.format_ident(ident) ], [])
+        return ast.Call(ast.Name('read_table', ast.Load()), [ *self.format_ident(ident) ], [])
       case _:
         return ast.NodeTransformer.generic_visit(self, node)
   def visit_Assign(self, node): # pylint: disable=invalid-name ; this is an overloaded function
@@ -44,9 +49,9 @@ class Rewrite(ast.NodeTransformer):
     expressions starting with a data object as a pipeline of computations."""
     match node:
       case ast.Assign([ ast.Name(ident, ast.Store()) ], ast.BinOp(left, ast.BitOr(), right)) if self.idmap.has(ident) and self.head_data_object(left):
-        return ast.Call(ast.Name('WriteTable', ast.Load()), [ *self.format_ident(ident), self.get_sequence(left, right) ], [])
+        return ast.Call(ast.Name('write_table', ast.Load()), [ *self.format_ident(ident), self.get_sequence(left, right) ], [])
       case ast.Assign([ ast.Name(ident, ast.Store()) ], value) if self.idmap.has(ident):
-        return ast.Call(ast.Name('WriteTable', ast.Load()), [ *self.format_ident(ident), self.visit(value) ], [])
+        return ast.Call(ast.Name('write_table', ast.Load()), [ *self.format_ident(ident), self.visit(value) ], [])
       case _:
         return ast.NodeTransformer.generic_visit(self, node)
   def visit_Expr(self, node): # pylint: disable=invalid-name ; this is an overloaded function
@@ -94,14 +99,15 @@ class Rewrite(ast.NodeTransformer):
     orig = self.idmap.rget(alias).split('::')
     return ast.Constant(orig[-1]), ast.Constant('::'.join(orig[:-1]))
 
-def parse(source:str):
+
+def to_standard_python(source:str):
   """Custom parser for extended Python syntax to access external data objects and create copmute pipelines."""
   idmap = Idmap()
   while True:
     try:
       tree = ast.parse(source)
       # print(ast.dump(tree, indent='· '))
-      return ast.fix_missing_locations(Rewrite(idmap).visit(tree))
+      return ast.unparse(ast.fix_missing_locations(Rewrite(idmap).visit(tree)))
     except SyntaxError as excp:
       if excp.args[0] == 'invalid syntax':
         _,lineno,offset,text,end_lineno,end_offset = excp.args[1]
@@ -128,9 +134,9 @@ if __name__ == '__main__':
   import sys
   INPUT = sys.argv[1] if len(sys.argv) > 1 and len(sys.argv[1]) > 0 else '$a=$a+1+$b+f(a)'
   try:
-    t = parse(INPUT)
-    if t:
-      print(ast.dump(t, indent='  '))
-      print(f'{INPUT} -> {ast.unparse(t)}')
-  except SyntaxError as e:
-    print(e)
+    src = to_standard_python(INPUT)
+    if src:
+      print(ast.dump(ast.parse(src), indent='  '))
+      print(f'{INPUT} -> {src}')
+  except SyntaxError as excp:
+    print(excp)
