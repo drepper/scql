@@ -50,6 +50,8 @@ class Rewrite(ast.NodeTransformer):
       case _:
         return node
   def head_data_object(self, tree:ast.AST):
+    """We only transform BitOr sequences to data object sequences if the first expression in the
+    sequence is a data object."""
     match tree:
       case ast.Name(ident, ast.Load()):
         return self.idmap.has(ident)
