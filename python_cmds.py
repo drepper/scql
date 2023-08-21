@@ -121,7 +121,7 @@ def to_standard_python(source:str):
             elif line[off] == ':' and off + 1 < len(line) and line[off+1] == ':':
               off += 2
             else:
-              break;
+              break
           alias = idmap.get(line[offset:off])
           nline = line[:offset-1] + alias + line[off:]
           lines[lineno-1] = nline
@@ -134,9 +134,9 @@ if __name__ == '__main__':
   import sys
   INPUT = sys.argv[1] if len(sys.argv) > 1 and len(sys.argv[1]) > 0 else '$a=$a+1+$b+f(a)'
   try:
-    src = to_standard_python(INPUT)
-    if src:
-      print(ast.dump(ast.parse(src), indent='  '))
-      print(f'{INPUT} -> {src}')
-  except SyntaxError as excp:
-    print(excp)
+    SRC = to_standard_python(INPUT)
+    if SRC:
+      print(ast.dump(ast.parse(SRC), indent='  '))
+      print(f'{INPUT} -> {SRC}')
+  except SyntaxError as synexcp:
+    print(synexcp)
