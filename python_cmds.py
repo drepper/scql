@@ -36,7 +36,7 @@ class Rewrite(ast.NodeTransformer):
     """Called for each ast.Name instance.  Detect alias uses."""
     match node:
       case ast.Name(ident, ast.Load()) if self.idmap.has(ident):
-        return ast.Call(ast.Name('ReadTable', ast.Load()), self.format_ident(ident), [])
+        return ast.Call(ast.Name('ReadTable', ast.Load()), [ *self.format_ident(ident) ], [])
       case _:
         return ast.NodeTransformer.generic_visit(self, node)
   def visit_Assign(self, node): # pylint: disable=invalid-name ; this is an overloaded function
@@ -44,9 +44,9 @@ class Rewrite(ast.NodeTransformer):
     expressions starting with a data object as a pipeline of computations."""
     match node:
       case ast.Assign([ ast.Name(ident, ast.Store()) ], ast.BinOp(left, ast.BitOr(), right)) if self.idmap.has(ident) and self.head_data_object(left):
-        return ast.Call(ast.Name('WriteTable', ast.Load()), self.format_ident(ident) + [ self.get_sequence(left, right) ], [])
+        return ast.Call(ast.Name('WriteTable', ast.Load()), [ *self.format_ident(ident), self.get_sequence(left, right) ], [])
       case ast.Assign([ ast.Name(ident, ast.Store()) ], value) if self.idmap.has(ident):
-        return ast.Call(ast.Name('WriteTable', ast.Load()), self.format_ident(ident) + [ self.visit(value) ], [])
+        return ast.Call(ast.Name('WriteTable', ast.Load()), [ *self.format_ident(ident), self.visit(value) ], [])
       case _:
         return ast.NodeTransformer.generic_visit(self, node)
   def visit_Expr(self, node): # pylint: disable=invalid-name ; this is an overloaded function
@@ -90,8 +90,9 @@ class Rewrite(ast.NodeTransformer):
       case _:
         return (self.visit(tree), [])
   def format_ident(self, alias:str):
+    """Create list with two """
     orig = self.idmap.rget(alias).split('::')
-    return [ ast.Constant(orig[-1]), ast.Constant('::'.join(orig[:-1])) ]
+    return ast.Constant(orig[-1]), ast.Constant('::'.join(orig[:-1]))
 
 def parse(source:str):
   """Custom parser for extended Python syntax to access external data objects and create copmute pipelines."""
