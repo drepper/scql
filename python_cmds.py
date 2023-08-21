@@ -38,24 +38,40 @@ class Rewrite(ast.NodeTransformer):
       case ast.Name(ident, ast.Load()) if self.idmap.has(ident):
         return ast.Call(ast.Name('ReadTable', ast.Load()), [ ast.Name(self.idmap.rget(ident), ast.Load()) ], [])
       case _:
-        return node
+        return ast.NodeTransformer.generic_visit(self, node)
   def visit_Assign(self, node): # pylint: disable=invalid-name ; this is an overloaded function
     """Called for each ast.Assign instance.  Detect assignment to an aliased identifier.  Recognize sequences of binary OR
-    expressions as a pipeline of computations."""
+    expressions starting with a data object as a pipeline of computations."""
     match node:
       case ast.Assign([ ast.Name(ident, ast.Store()) ], ast.BinOp(left, ast.BitOr(), right)) if self.idmap.has(ident) and self.head_data_object(left):
         return ast.Call(ast.Name('WriteTable', ast.Load()), [ ast.Name(self.idmap.rget(ident), ast.Load()), self.get_sequence(left, right) ], [])
       case ast.Assign([ ast.Name(ident, ast.Store()) ], value) if self.idmap.has(ident):
         return ast.Call(ast.Name('WriteTable', ast.Load()), [ ast.Name(self.idmap.rget(ident), ast.Load()), self.visit(value) ], [])
       case _:
-        return node
+        return ast.NodeTransformer.generic_visit(self, node)
+  def visit_Expr(self, node): # pylint: disable=invalid-name ; this is an overloaded function
+    """Called for each ast.Expr instance.  Recognize sequences of binary OR
+    expressions starting with a data object as a pipeline of computations."""
+    match node:
+      case ast.Expr(ast.BinOp(left, ast.BitOr(), right)) if self.head_data_object(left):
+        return self.get_sequence(left, right)
+      case _:
+        return ast.NodeTransformer.generic_visit(self, node)
+  def visit_Return(self, node): # pylint: disable=invalid-name ; this is an overloaded function
+    """Called for each ast.Return instance.  Recognize sequences of binary OR
+    expressions starting with a data object as a pipeline of computations."""
+    match node:
+      case ast.Return(ast.BinOp(left, ast.BitOr(), right)) if self.head_data_object(left):
+        return self.get_sequence(left, right)
+      case _:
+        return ast.NodeTransformer.generic_visit(self, node)
   def head_data_object(self, tree:ast.AST):
     """We only transform BitOr sequences to data object sequences if the first expression in the
     sequence is a data object."""
     match tree:
       case ast.Name(ident, ast.Load()):
         return self.idmap.has(ident)
-      case ast.BinOp(left, ast.BitOr(), right):
+      case ast.BinOp(left, ast.BitOr(), _):
         return self.head_data_object(left)
       case _:
         return False
@@ -79,7 +95,9 @@ def parse(source:str):
   idmap = Idmap()
   while True:
     try:
-      return ast.fix_missing_locations(Rewrite(idmap).visit(ast.parse(source)))
+      tree = ast.parse(source)
+      # print(ast.dump(tree, indent='· '))
+      return ast.fix_missing_locations(Rewrite(idmap).visit(tree))
     except SyntaxError as excp:
       if excp.args[0] == 'invalid syntax':
         _,lineno,offset,text,end_lineno,end_offset = excp.args[1]
