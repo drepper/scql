@@ -23,6 +23,9 @@ class Cell: # pylint: disable=too-many-instance-attributes
     _TICK += 1
     for dep in deps:
       _store_dep(*dep, (self.name, ns))
+  def get_value(self):
+    """Return the value stored in this data object."""
+    return self.value
   def valid_p(self):
     """Check whether any of the data objects this object depends of has changed."""
     for depnam in self.deps:
