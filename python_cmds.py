@@ -116,7 +116,7 @@ def to_standard_python(source:str):
         if lineno == end_lineno and offset + 1 <= end_offset and line[offset-1:end_offset-1] == '$' and line[offset].isalpha():
           off = offset + 1
           while off < len(line):
-            if line[off].isalnum():
+            if line[off].isalnum() or line[off] == '_':
               off += 1
             elif line[off:off+2] == '::' and len(line) - off > 2 and line[off+2].isalpha():
               off += 3
