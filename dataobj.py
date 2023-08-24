@@ -63,8 +63,7 @@ class BinaryOp(Op): # pylint: disable=too-few-public-methods
   def apply(self, obj:'Data') -> 'Data':
     if self.atright:
       return self.func(obj.data, self.robj if isinstance(self.robj, str) else self.robj.get_value())
-    else:
-      return self.func(self.robj if isinstance(self.robj, str) else self.robj.get_value(), obj.data)
+    return self.func(self.robj if isinstance(self.robj, str) else self.robj.get_value(), obj.data)
 
 class Add(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
