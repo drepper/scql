@@ -1,7 +1,7 @@
 """Evaluate extended Python expression including recomputation of
 out-of-date data objects."""
 
-from dataobj import Negative, Abs, Sqrt, Square, Add, Subtract, Multiply, Identity, Zeros, Ones # pylint: disable=unused-import
+from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Add, Subtract, Multiply, Identity, Zeros, Ones # pylint: disable=unused-import
 import storage
 
 

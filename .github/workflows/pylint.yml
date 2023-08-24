@@ -17,7 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        pip install pylint numpy
     - name: Analysing the code with pylint
       run: |
         pylint --indent-string '  ' --max-line-length 200 --good-names ns,ts,op --no-docstring-rgx '.*' $(git ls-files '*.py')

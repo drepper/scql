@@ -2,7 +2,7 @@
 import numpy as np
 
 
-__all__ = ['Negative', 'Abs', 'Sqrt', 'Square', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
+__all__ = ['Negative', 'Abs', 'Sqrt', 'Square', 'Exp', 'Log', 'Sin', 'Cos', 'Tan', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
 
 
 class Op: # pylint: disable=too-few-public-methods
@@ -30,6 +30,26 @@ class Sqrt(UnaryOp): # pylint: disable=too-few-public-methods
 class Square(UnaryOp): # pylint: disable=too-few-public-methods
   def __init__(self):
     super().__init__(np.square)
+
+class Exp(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.exp)
+
+class Log(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.log)
+
+class Sin(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.sin)
+
+class Cos(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.cos)
+
+class Tan(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.tan)
 
 class BinaryOp(Op): # pylint: disable=too-few-public-methods
   def __init__(self, func:np.ufunc, robj:'Data'):
