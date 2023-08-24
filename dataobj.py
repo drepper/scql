@@ -120,7 +120,7 @@ def known_generator_p(ident:str) -> bool:
 if __name__ == '__main__':
   a = Data([[1,2,3],[2,3,4],[3,4,5]])
   plus1 = Add(Data(1))
-  r = a.sequence([plus1])
+  r = a.sequence(plus1)
   e = np.array([[2, 3, 4], [3, 4, 5], [4, 5, 6]])
   assert np.array_equal(r.data, e)
   print('OK')
