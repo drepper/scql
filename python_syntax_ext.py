@@ -3,6 +3,7 @@ special object types, e.g., named data objects in a namespace."""
 
 import ast
 import uuid
+import dataobj
 
 
 __all__ = [ "to_standard_python" ]
@@ -76,6 +77,8 @@ class Rewrite(ast.NodeTransformer):
     match tree:
       case ast.Name(ident, ast.Load()):
         return self.idmap.has(ident)
+      case ast.Call(ast.Name(ident, ast.Load()), _, _):
+        return dataobj.known_generator_p(ident)
       case ast.BinOp(left, ast.BitOr(), _):
         return self.head_data_object(left)
       case _:
