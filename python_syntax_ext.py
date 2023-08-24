@@ -140,7 +140,7 @@ if __name__ == '__main__':
   import sys
   INPUT = sys.argv[1] if len(sys.argv) > 1 and len(sys.argv[1]) > 0 else '$a=$a+1+$b+f(a)'
   try:
-    SRC = to_standard_python(INPUT)
+    SRC = to_standard_python(INPUT, 'foo')
     if SRC:
       print(ast.dump(ast.parse(SRC), indent='  '))
       print(f'{INPUT} -> {SRC}')

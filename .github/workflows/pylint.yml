@@ -20,4 +20,4 @@ jobs:
         pip install pylint numpy
     - name: Analysing the code with pylint
       run: |
-        pylint --indent-string '  ' --max-line-length 200 --good-names ns,ts,op --no-docstring-rgx '.*' $(git ls-files '*.py')
+        pylint --indent-string '  ' --max-line-length 200 --good-names ns,ts,op,cn --no-docstring-rgx '.*' $(git ls-files '*.py')
