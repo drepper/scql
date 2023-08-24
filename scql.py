@@ -1,10 +1,10 @@
 """Toplevel REPL for the query/compute language mockup."""
-import python_syntax_ext
 import compute
+import python_syntax_ext
 
 
 def evaluate(line:str):
-  std = python_syntax_ext.to_standard_python(line)
+  std = python_syntax_ext.to_standard_python(line, compute.get_cn())
   return compute.compute(std)
 
 
@@ -18,7 +18,9 @@ def main():
       line = 'quit'
     if line == 'quit':
       break
-    print(evaluate(line))
+    res = evaluate(line)
+    if res is not None:
+      print(res)
 
 
 if __name__ == '__main__':

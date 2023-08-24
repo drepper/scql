@@ -1,8 +1,20 @@
 """Evaluate extended Python expression including recomputation of
 out-of-date data objects."""
+import os
 
 from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Add, Subtract, Multiply, Identity, Zeros, Ones # pylint: disable=unused-import
 import storage
+
+
+_DEFAULTNS = os.getenv('USER')
+
+
+def cn(ns:str) -> None:
+  global _DEFAULTNS
+  _DEFAULTNS = ns
+
+def get_cn() -> str:
+  return _DEFAULTNS
 
 
 class Compute:

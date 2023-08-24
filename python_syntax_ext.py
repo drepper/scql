@@ -14,10 +14,13 @@ class Idmap:
   def __init__(self):
     self.idmap = {}
     self.rmap = {}
-  def get(self, name:str):
+  def get(self, name:str, defaultns:str):
     """Get existing or new random alias for a given name."""
     if len(name) == 0:
       raise RuntimeError('invalid empty ID')
+    sname = name.split('::')
+    if len(sname) == 1:
+      name = defaultns + '::' + name
     if not name in self.idmap:
       rand = f'T{uuid.uuid4().hex}'
       self.idmap[name] = rand
@@ -103,7 +106,7 @@ class Rewrite(ast.NodeTransformer):
     return ast.Constant(orig[-1]), ast.Constant('::'.join(orig[:-1]))
 
 
-def to_standard_python(source:str):
+def to_standard_python(source:str, defaultns:str):
   """Custom parser for extended Python syntax to access external data objects and create copmute pipelines."""
   idmap = Idmap()
   while True:
@@ -125,7 +128,7 @@ def to_standard_python(source:str):
               off += 3
             else:
               break
-          alias = idmap.get(line[offset:off])
+          alias = idmap.get(line[offset:off], defaultns)
           nline = line[:offset-1] + alias + line[off:]
           lines[lineno-1] = nline
           source = '\n'.join(lines)
