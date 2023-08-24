@@ -1,7 +1,7 @@
 import numpy as np
 
 
-__all__ = ['Negative', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zero', 'known_generator_p']
+__all__ = ['Negative', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeroes', 'Ones', 'known_generator_p']
 
 
 class Op:
@@ -57,13 +57,17 @@ class Identity(Data):
   def __init__(self, n:int, dtype=float):
     self.data = np.identity(n, dtype)
 
-class Zero(Data):
-  def __init__(self, n:int, dtype=float):
+class Zeroes(Data):
+  def __init__(self, n:[int,tuple[int,int]], dtype=float):
     self.data = np.zeros(n, dtype)
+
+class Ones(Data):
+  def __init__(self, n:[int,tuple[int,int]], dtype=float):
+    self.data = np.ones(n, dtype)
 
 
 def known_generator_p(ident:str) -> bool:
-  return ident in ['Identity', 'Zero']
+  return ident in ['Identity', 'Zeroes' ,'Ones']
 
 
 if __name__ == '__main__':

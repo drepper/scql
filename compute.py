@@ -1,4 +1,4 @@
-from dataobj import Negative, Add, Subtract, Multiply, Identity, Zero
+from dataobj import Negative, Add, Subtract, Multiply, Identity, Zeroes, Ones
 import storage
 
 
