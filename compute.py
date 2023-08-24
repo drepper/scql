@@ -28,7 +28,7 @@ class Compute:
   def finish(self):
     return self.stack.pop(-1)[2]
   def current(self):
-    return self.stack[-1][1]
+    return self.stack[-1][1:3]
 
 _CONTEXT = None
 
@@ -52,7 +52,7 @@ def read_table(name:str, ns:str):
 
 
 def write_table(name:str, ns:str, value):
-  return storage.store(name, ns, value, _CONTEXT.current())
+  return storage.store(name, ns, value, *_CONTEXT.current())
 
 
 def compute(expr:str):

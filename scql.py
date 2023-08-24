@@ -12,7 +12,7 @@ def main():
   line = ''
   while True:
     try:
-      line = input('> ')
+      line = input(f'\033[33m[{compute.get_cn()}] >\033[0m ')
     except EOFError:
       print('quit')
       line = 'quit'
