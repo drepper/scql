@@ -10,7 +10,7 @@ _DEFAULTNS = os.getenv('USER')
 
 
 def cn(ns:str) -> None:
-  global _DEFAULTNS
+  global _DEFAULTNS # pylint: disable=global-statement
   _DEFAULTNS = ns
 
 def get_cn() -> str:
