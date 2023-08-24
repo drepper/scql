@@ -52,27 +52,39 @@ class Tan(UnaryOp): # pylint: disable=too-few-public-methods
     super().__init__(np.tan)
 
 class BinaryOp(Op): # pylint: disable=too-few-public-methods
-  def __init__(self, func:np.ufunc, robj:'Data'):
+  def __init__(self, func:np.ufunc, robj:'Data', atright):
     self.func = func
+    self.atright = atright
     match robj:
       case int() | float():
         self.robj = Data(robj)
       case _:
         self.robj = robj
   def apply(self, obj:'Data') -> 'Data':
-    return self.func(obj.data, self.robj if isinstance(self.robj, str) else self.robj.get_value())
+    if self.atright:
+      return self.func(obj.data, self.robj if isinstance(self.robj, str) else self.robj.get_value())
+    else:
+      return self.func(self.robj if isinstance(self.robj, str) else self.robj.get_value(), obj.data)
 
 class Add(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
-    super().__init__(np.add, robj)
+    super().__init__(np.add, robj, True)
 
 class Subtract(BinaryOp): # pylint: disable=too-few-public-methods
-  def __init__(self, robj:'Data'):
-    super().__init__(np.subtract, robj)
+  def __init__(self, robj:'Data', atright=True):
+    super().__init__(np.subtract, robj, atright)
 
 class Multiply(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
-    super().__init__(np.multiply, robj)
+    super().__init__(np.multiply, robj, True)
+
+class Cross(BinaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self, robj:'Data', atright=True):
+    super().__init__(np.cross, robj, atright)
+
+class Matmul(BinaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self, robj:'Data', atright=True):
+    super().__init__(np.matmul, robj, atright)
 
 
 class Data:

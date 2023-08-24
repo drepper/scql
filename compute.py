@@ -2,7 +2,7 @@
 out-of-date data objects."""
 import os
 
-from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Add, Subtract, Multiply, Identity, Zeros, Ones # pylint: disable=unused-import
+from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Add, Subtract, Multiply, Cross, Matmul, Identity, Zeros, Ones # pylint: disable=unused-import
 import storage
 
 
@@ -58,6 +58,10 @@ def write_table(name:str, ns:str, value):
 def compute(expr:str):
   global _CONTEXT # pylint: disable=global-statement
   _CONTEXT = Compute('#top#', expr)
-  res = eval(expr) # pylint: disable=eval-used
+  try:
+    res = eval(expr) # pylint: disable=eval-used
+  except NameError as exc:
+    print(f'unknown identifier: {exc}')
+    res = None
   _CONTEXT = None
   return res
