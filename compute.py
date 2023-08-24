@@ -1,4 +1,7 @@
-from dataobj import Negative, Add, Subtract, Multiply, Identity, Zeros, Ones
+"""Evaluate extended Python expression including recomputation of
+out-of-date data objects."""
+
+from dataobj import Negative, Abs, Sqrt, Square, Add, Subtract, Multiply, Identity, Zeros, Ones # pylint: disable=unused-import
 import storage
 
 
@@ -15,7 +18,7 @@ class Compute:
   def current(self):
     return self.stack[-1][1]
 
-_context = None
+_CONTEXT = None
 
 
 def explode_name(name:str) -> (str,str):
@@ -24,25 +27,25 @@ def explode_name(name:str) -> (str,str):
 
 
 def read_table(name:str, ns:str):
-  # Check whether the table is available and up-to-date
-  _context.add(name, ns)
+  """Check whether the table is available and up-to-date and return its value."""
+  _CONTEXT.add(name, ns)
   obj = storage.get(name, ns)
   if not obj.valid_p():
     code = obj.get_code()
-    _context.recurse(ns + '::' + name if ns else name, code)
-    res = eval(code)
-    deps = _context.finish()
+    _CONTEXT.recurse(ns + '::' + name if ns else name, code)
+    res = eval(code) # pylint: disable=eval-used
+    deps = _CONTEXT.finish()
     obj = storage.store(name, ns, res, code, deps)
   return obj.get_value()
 
 
 def write_table(name:str, ns:str, value):
-  return storage.store(name, ns, value, _context.current())
+  return storage.store(name, ns, value, _CONTEXT.current())
 
 
 def compute(expr:str):
-  global _context
-  _context = Compute('#top#', expr)
-  res = eval(expr)
-  _context = None
+  global _CONTEXT # pylint: disable=global-statement
+  _CONTEXT = Compute('#top#', expr)
+  res = eval(expr) # pylint: disable=eval-used
+  _CONTEXT = None
   return res

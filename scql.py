@@ -1,9 +1,10 @@
+"""Toplevel REPL for the query/compute language mockup."""
 import python_syntax_ext
 import compute
 
 
-def evaluate(s:str):
-  std = python_syntax_ext.to_standard_python(s)
+def evaluate(line:str):
+  std = python_syntax_ext.to_standard_python(line)
   return compute.compute(std)
 
 

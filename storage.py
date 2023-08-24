@@ -10,7 +10,7 @@ class Cell: # pylint: disable=too-many-instance-attributes
   """Data structure for a storage object.  The type of the object is unknown.  Record a list
   of dependencies, keep a reference counter, and a list of data objects which depend on this
   object."""
-  def __init__(self, name:str, ns:str, obj, code:[None,str], deps:list[tuple[str,str]]):
+  def __init__(self, name:str, ns:str, obj, code:[None,str], deps:list[tuple[str,str]]): # pylint: disable=too-many-arguments
     global _TICK # pylint: disable=global-statement
     self.name = name
     self.ns = ns
@@ -40,7 +40,7 @@ class Cell: # pylint: disable=too-many-instance-attributes
     return True
   def recomputable_p(self) -> bool:
     """Return true if the value can be recomputed."""
-    return self.code != None
+    return self.code is not None
   def get_code(self) -> str:
     """Return the code used."""
     if self.code:
@@ -110,7 +110,7 @@ class Storage:
   def create(self, name:str) -> None:
     """Create new empty namespace with given name."""
     self.all[name] = Namespace(name)
-  def store(self, name:str, ns:[str,Namespace], obj, code:[None,str], deps:list[tuple[str,str]]) -> Cell:
+  def store(self, name:str, ns:[str,Namespace], obj, code:[None,str], deps:list[tuple[str,str]]) -> Cell: # pylint: disable=too-many-arguments
     """Store data object with given full name and its dependency list."""
     match ns:
       case str(_):
@@ -174,4 +174,3 @@ if __name__ == '__main__':
   assert len(_workspace.all['ns1'].objs) == 1
   assert o1.get_value() == (1,2,3)
   print('OK')
-

@@ -1,24 +1,37 @@
+"""Implement operations of the language on top of standard Python."""
 import numpy as np
 
 
-__all__ = ['Negative', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
+__all__ = ['Negative', 'Abs', 'Sqrt', 'Square', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
 
 
-class Op:
+class Op: # pylint: disable=too-few-public-methods
   def __init__(self):
     pass
 
-class UnaryOp(Op):
+class UnaryOp(Op): # pylint: disable=too-few-public-methods
   def __init__(self, func:np.ufunc):
     self.func = func
   def apply(self, obj:'Data') -> 'Data':
     return self.func(obj.data)
 
-class Negative(UnaryOp):
+class Negative(UnaryOp): # pylint: disable=too-few-public-methods
   def __init__(self):
     super().__init__(np.negative)
 
-class BinaryOp(Op):
+class Abs(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.abs)
+
+class Sqrt(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.sqrt)
+
+class Square(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self):
+    super().__init__(np.square)
+
+class BinaryOp(Op): # pylint: disable=too-few-public-methods
   def __init__(self, func:np.ufunc, robj:'Data'):
     self.func = func
     match robj:
@@ -27,17 +40,17 @@ class BinaryOp(Op):
       case _:
         self.robj = robj
   def apply(self, obj:'Data') -> 'Data':
-    return self.func(obj.data, self.robj if type(self.robj) == str else self.robj.data)
+    return self.func(obj.data, self.robj if isinstance(self.robj, str) else self.robj.get_value())
 
-class Add(BinaryOp):
+class Add(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
     super().__init__(np.add, robj)
 
-class Subtract(BinaryOp):
+class Subtract(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
     super().__init__(np.subtract, robj)
 
-class Multiply(BinaryOp):
+class Multiply(BinaryOp): # pylint: disable=too-few-public-methods
   def __init__(self, robj:'Data'):
     super().__init__(np.multiply, robj)
 
@@ -46,23 +59,25 @@ class Data:
   def __init__(self, nums):
     self.data = np.array(nums)
   def sequence(self, *ops:Op) -> 'Data':
-    res = self.data
+    res = self.get_value()
     for op in ops:
       res = op.apply(res)
     return Data(res)
+  def get_value(self):
+    return self.data
   def __str__(self):
-    return str(self.data)
+    return str(self.get_value())
 
 class Identity(Data):
-  def __init__(self, n:int, dtype=float):
+  def __init__(self, n:int, dtype=float): # pylint: disable=super-init-not-called
     self.data = np.identity(n, dtype)
 
 class Zeros(Data):
-  def __init__(self, n:[int,tuple[int,int]], dtype=float):
+  def __init__(self, n:[int,tuple[int,int]], dtype=float): # pylint: disable=super-init-not-called
     self.data = np.zeros(n, dtype)
 
 class Ones(Data):
-  def __init__(self, n:[int,tuple[int,int]], dtype=float):
+  def __init__(self, n:[int,tuple[int,int]], dtype=float): # pylint: disable=super-init-not-called
     self.data = np.ones(n, dtype)
 
 
