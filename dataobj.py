@@ -2,7 +2,7 @@
 import numpy as np
 
 
-__all__ = ['Negative', 'Abs', 'Sqrt', 'Square', 'Exp', 'Log', 'Sin', 'Cos', 'Tan', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
+__all__ = ['Negative', 'Abs', 'Sqrt', 'Square', 'Exp', 'Log', 'Sin', 'Cos', 'Tan', 'Max', 'Min', 'Add', 'Subtract', 'Multiply', 'Identity', 'Zeros', 'Ones', 'known_generator_p']
 
 
 class Op: # pylint: disable=too-few-public-methods
@@ -10,7 +10,7 @@ class Op: # pylint: disable=too-few-public-methods
     pass
 
 class UnaryOp(Op): # pylint: disable=too-few-public-methods
-  def __init__(self, func:np.ufunc):
+  def __init__(self, func):
     self.func = func
   def apply(self, obj:'Data') -> 'Data':
     return self.func(obj.data)
@@ -50,6 +50,14 @@ class Cos(UnaryOp): # pylint: disable=too-few-public-methods
 class Tan(UnaryOp): # pylint: disable=too-few-public-methods
   def __init__(self):
     super().__init__(np.tan)
+
+class Max(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self, axis=None):
+    super().__init__(lambda a: np.max(a, axis=axis))
+
+class Min(UnaryOp): # pylint: disable=too-few-public-methods
+  def __init__(self, axis=None):
+    super().__init__(lambda a: np.min(a, axis=axis))
 
 class BinaryOp(Op): # pylint: disable=too-few-public-methods
   def __init__(self, func:np.ufunc, robj:'Data', atright:bool):
@@ -113,7 +121,7 @@ class Ones(Data):
 
 
 def known_generator_p(ident:str) -> bool:
-  return ident in ['Identity', 'Zeros' ,'Ones']
+  return ident in ['Data', 'Identity', 'Zeros' ,'Ones']
 
 
 if __name__ == '__main__':

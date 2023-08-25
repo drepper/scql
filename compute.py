@@ -2,7 +2,7 @@
 out-of-date data objects."""
 import os
 
-from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Add, Subtract, Multiply, Cross, Matmul, Identity, Zeros, Ones # pylint: disable=unused-import
+from dataobj import Negative, Abs, Sqrt, Square, Exp, Log, Sin, Cos, Tan, Max, Min, Add, Subtract, Multiply, Cross, Matmul, Identity, Zeros, Ones, Data # pylint: disable=unused-import
 import storage
 
 
@@ -52,6 +52,11 @@ def read_table(name:str, ns:str):
 
 
 def write_table(name:str, ns:str, value):
+  if isinstance(value, list):
+    try:
+      value = Data(value)
+    except:
+      pass
   return storage.store(name, ns, value, *_CONTEXT.current())
 
 
