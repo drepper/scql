@@ -55,7 +55,7 @@ def write_table(name:str, ns:str, value):
   if isinstance(value, list):
     try:
       value = Data(value)
-    except:
+    except: # pylint: disable=bare-except
       pass
   return storage.store(name, ns, value, *_CONTEXT.current())
 
