@@ -18,7 +18,6 @@ def get_cn() -> str:
 
 
 class Compute:
-
   def __init__(self, topname, code):
     self.stack:list[tuple[str,str,list[(str,str)]]] = [(topname, code, [])]
   def recurse(self, name, code):
@@ -67,6 +66,9 @@ def compute(expr:str):
     res = eval(expr) # pylint: disable=eval-used
   except NameError as exc:
     print(f'unknown identifier: {exc}')
+    res = None
+  except SyntaxError as exc:
+    print(f'syntax error: {exc}')
     res = None
   _CONTEXT = None
   return res
