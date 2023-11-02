@@ -28,6 +28,7 @@ namespace repl {
 
     // Terminal escape sequences.
     const char dsr[] { '\e', '[', '6', 'n' };
+    const char el0[] { '\e', '[', '0', 'K' };
 
     const char quit_cmd[] = "quit";
 
@@ -121,7 +122,7 @@ namespace repl {
     enum struct parsed {
       parsing,
       ch,
-      creturn,
+      nl,
       sigint,
       sigquit,
       eol,
@@ -178,6 +179,8 @@ namespace repl {
     case states::initial:
       if (c == '\e')
         state = states::esc;
+      else if (c == '\r')
+        res = parsed::nl;
       else if (c < 0x80)
         res = parsed::ch;
       else if ((c & 0xe0) == 0xc0)
@@ -316,8 +319,7 @@ namespace repl {
       auto[endp,ec] = std::from_chars(buf + pos, buf + total, res[i]);
       int newpos = endp - buf;
       assert(newpos != total);
-      if (ec != std::errc() || buf[newpos] != (i + 1 == N ? suffix : ';')) {
-        write(1,"fail\n",5);
+      if (ec != std::errc() || *endp != (i + 1 == N ? suffix : ';')) {
         return std::nullopt;
       }
       pos = newpos + 1;
@@ -353,6 +355,8 @@ namespace repl {
   }
 
 
+  int target_col = -1;
+
   int prompt_row = -1;
   int prompt_col = -1;
 
@@ -365,7 +369,7 @@ namespace repl {
   bool insert_mode = true;
 
 
-  std::pair<int,int> move(size_t p)
+  std::pair<int,int> coords(size_t p)
   {
     int x = input_start_col;
     int y = input_start_row;
@@ -375,32 +379,43 @@ namespace repl {
         ++y;
       } else
         ++x;
+    return std::make_pair(x, y);
+  }
+
+
+  std::pair<int,int> move(size_t p)
+  {
+    auto[x,y] = coords(p);
     auto s = std::format("\e[{};{}H", 1 + y, 1 + x);
     ::write(STDOUT_FILENO, s.c_str(), s.size());
     return std::make_pair(x, y);
   }
 
-  void move()
+  auto move()
   {
-    (void) move(pos);
+    return move(pos);
   }
 
 
-  void redisplay(size_t p)
+  auto redisplay(size_t p)
   {
-    auto[x,y] = move(p);
     size_t i = p;
     while (i < res.size()) {
       auto nn = res.find('\n', i);
-      auto nnn = nn == std::string::npos ? res.size() - i : nn;
+      auto nnn = (nn == std::string::npos ? res.size() : nn) - i;
       ::write(STDOUT_FILENO, res.c_str() + i, nnn);
+      ::write(STDOUT_FILENO, el0, sizeof(el0));
       if (nn != std::string::npos) {
+        ::write(STDOUT_FILENO, "\n", 1);
+        // Skip the newline
+        ++nnn;
         for (int j = 0; j < input_start_col; ++j)
           ::write(STDOUT_FILENO, " ", 1);
       }
       i += nnn;
     }
-    move();
+    ::write(STDOUT_FILENO, el0, sizeof(el0));
+    return move();
   }
 
 
@@ -416,8 +431,11 @@ namespace repl {
     if (! insert_mode)
       res.erase(pos, n);
     res.insert(pos, s, n);
+    ::write(10, res.c_str(), res.size());
+    ::write(10, res.c_str() + pos, res.size() - pos);
     pos += n;
-    redisplay(pos - n);
+    auto[x,y] = redisplay(pos - n);
+    target_col = x;
   }
 
 
@@ -461,11 +479,12 @@ namespace repl {
           switch (pres) {
           case input_sm::parsed::eol:
             goto out;
+          case input_sm::parsed::nl:
+            // Translate for Unix systems.
+            buf[wp - 1] = '\n';
+            insert(reinterpret_cast<char*>(buf), wp);
+            break;
           case input_sm::parsed::ch:
-            if (lastch == '\r')
-              // Translate for Unix systems.
-              buf[wp - 1] = '\n';
-
             insert(reinterpret_cast<char*>(buf), wp);
             break;
           case input_sm::parsed::sigint:
@@ -484,13 +503,43 @@ namespace repl {
           case input_sm::parsed::left:
             if (pos > 0) {
               --pos;
-              move();
+              auto[x,_] = move();
+              target_col = x;
             }
             break;
           case input_sm::parsed::right:
             if (pos < res.size()) {
               ++pos;
-              move();
+              auto[x,_] = move();
+              target_col = x;
+            }
+            break;
+          case input_sm::parsed::up:
+            if (auto curline_start = res.rfind('\n', pos); curline_start != std::string::npos && curline_start > 0) {
+              ++curline_start;
+              auto prevline_start = res.rfind('\n', curline_start - 2);
+              if (prevline_start == std::string::npos)
+                prevline_start = 0;
+              else
+                prevline_start += 1;
+              if (curline_start - prevline_start >= size_t(target_col))
+                pos = prevline_start + target_col;
+              else
+                pos = curline_start - 1;
+            }
+            break;
+          case input_sm::parsed::down:
+            if (auto nextline_start = res.find('\n', pos); nextline_start != std::string::npos && nextline_start + 1 < res.size()) {
+              ++nextline_start;
+              auto nextnextline_start = res.rfind('\n', nextline_start);
+              if (nextnextline_start == std::string::npos)
+                nextnextline_start = res.size();
+              else
+                nextnextline_start += 1;
+              if (nextnextline_start - nextline_start >= size_t(target_col))
+                pos = nextline_start + target_col;
+              else
+                pos = nextnextline_start - 1;
             }
             break;
           case input_sm::parsed::cpr:
@@ -510,6 +559,7 @@ namespace repl {
                 if (nrs.has_value()) {
                   input_start_row = (*nrs)[0] - 1;
                   input_start_col = (*nrs)[1] - 1;
+                  target_col = input_start_col;
                 } else
                   ::write(STDOUT_FILENO, dsr, sizeof(dsr));
               }
