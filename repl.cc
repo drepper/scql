@@ -28,7 +28,7 @@ namespace repl {
 
     // Terminal escape sequences.
     const char dsr[] { '\e', '[', '6', 'n' };
-    const char el0[] { '\e', '[', '0', 'K' };
+    const char el0nl[] { '\e', '[', '0', 'K', '\n' };
 
     const char quit_cmd[] = "quit";
 
@@ -123,6 +123,10 @@ namespace repl {
       parsing,
       ch,
       nl,
+      bs,
+      del,
+      alt_b,
+      alt_f,
       sigint,
       sigquit,
       eol,
@@ -181,6 +185,8 @@ namespace repl {
         state = states::esc;
       else if (c == '\r')
         res = parsed::nl;
+      else if (c == '\177')
+        res = parsed::bs;
       else if (c < 0x80)
         res = parsed::ch;
       else if ((c & 0xe0) == 0xc0)
@@ -366,8 +372,6 @@ namespace repl {
   std::string res;
   size_t pos = 0;
 
-  bool insert_mode = true;
-
 
   std::pair<int,int> coords(size_t p)
   {
@@ -397,45 +401,54 @@ namespace repl {
   }
 
 
-  auto redisplay(size_t p)
+  void redisplay(size_t p)
   {
-    size_t i = p;
-    while (i < res.size()) {
-      auto nn = res.find('\n', i);
-      auto nnn = (nn == std::string::npos ? res.size() : nn) - i;
-      ::write(STDOUT_FILENO, res.c_str() + i, nnn);
-      ::write(STDOUT_FILENO, el0, sizeof(el0));
-      if (nn != std::string::npos) {
-        ::write(STDOUT_FILENO, "\n", 1);
-        // Skip the newline
-        ++nnn;
-        for (int j = 0; j < input_start_col; ++j)
-          ::write(STDOUT_FILENO, " ", 1);
-      }
-      i += nnn;
+    while (p < res.size()) {
+      auto end = res.find('\n', p);
+      auto here = (end == std::string::npos ? res.size() : end) - p;
+      ::write(STDOUT_FILENO, res.data() + p, here);
+      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
+      if (end == std::string::npos)
+        break;
+      p += here + 1;
+      for (int j = 0; j < input_start_col; ++j)
+        ::write(STDOUT_FILENO, " ", 1);
     }
-    ::write(STDOUT_FILENO, el0, sizeof(el0));
-    return move();
   }
 
 
   void insert(const char* s, size_t n)
   {
     assert(pos >= 0 && pos <= res.size());
-    if (pos == res.size()) {
-      res.append(s, n);
-      ::write(STDOUT_FILENO, s, n);
-      pos += n;
-      return;
+    while (n > 0) {
+      auto[x,y] = coords(pos);
+      auto endp = static_cast<const char*>(memchr(s, '\n', n));
+      auto here = endp == nullptr ? n : (endp - buf);
+      res.insert(pos, s, here);
+      ::write(STDOUT_FILENO, s, here);
+      pos += here;
+      if (endp == nullptr)
+        break;
+      res.insert(pos, 1, '\n');
+      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
+      ++pos;
+      if (y + 1 == cur_height)
+        input_start_row -= 1;
+      for (int j = 0; j < input_start_col; ++j)
+        ::write(STDOUT_FILENO, " ", 1);
+      s += here + 1;
+      n -= here + 1;
     }
-    if (! insert_mode)
-      res.erase(pos, n);
-    res.insert(pos, s, n);
-    ::write(10, res.c_str(), res.size());
-    ::write(10, res.c_str() + pos, res.size() - pos);
-    pos += n;
-    auto[x,y] = redisplay(pos - n);
-    target_col = x;
+    redisplay(pos);
+    auto[x,y] = move(pos);
+    target_col = x - input_start_col;
+  }
+
+
+  void del(size_t p, size_t n)
+  {
+    res.erase(p, n);
+    redisplay(p);
   }
 
 
@@ -446,6 +459,8 @@ namespace repl {
 
     prompt_row = -1;
     prompt_col = -1;
+
+    target_col = 0;
 
     input_start_row = -1;
     input_start_col = -1;
@@ -487,6 +502,14 @@ namespace repl {
           case input_sm::parsed::ch:
             insert(reinterpret_cast<char*>(buf), wp);
             break;
+          case input_sm::parsed::bs:
+            ::write(11,"a",1);
+            if (pos > 0) {
+            ::write(11,"b",1);
+              del(--pos, 1);
+              target_col = pos;
+            }
+            break;
           case input_sm::parsed::sigint:
             // XYZ Indicate user interrupt
             res = "";
@@ -504,14 +527,14 @@ namespace repl {
             if (pos > 0) {
               --pos;
               auto[x,_] = move();
-              target_col = x;
+              target_col = x - input_start_col;
             }
             break;
           case input_sm::parsed::right:
             if (pos < res.size()) {
               ++pos;
               auto[x,_] = move();
-              target_col = x;
+              target_col = x - input_start_col;
             }
             break;
           case input_sm::parsed::up:
@@ -526,12 +549,13 @@ namespace repl {
                 pos = prevline_start + target_col;
               else
                 pos = curline_start - 1;
+              move();
             }
             break;
           case input_sm::parsed::down:
             if (auto nextline_start = res.find('\n', pos); nextline_start != std::string::npos && nextline_start + 1 < res.size()) {
               ++nextline_start;
-              auto nextnextline_start = res.rfind('\n', nextline_start);
+              auto nextnextline_start = res.find('\n', nextline_start);
               if (nextnextline_start == std::string::npos)
                 nextnextline_start = res.size();
               else
@@ -540,6 +564,7 @@ namespace repl {
                 pos = nextline_start + target_col;
               else
                 pos = nextnextline_start - 1;
+              move();
             }
             break;
           case input_sm::parsed::cpr:
@@ -559,7 +584,6 @@ namespace repl {
                 if (nrs.has_value()) {
                   input_start_row = (*nrs)[0] - 1;
                   input_start_col = (*nrs)[1] - 1;
-                  target_col = input_start_col;
                 } else
                   ::write(STDOUT_FILENO, dsr, sizeof(dsr));
               }
