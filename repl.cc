@@ -28,23 +28,27 @@ namespace repl {
 
     // Terminal escape sequences.
     const char dsr[] { '\e', '[', '6', 'n' };
+    const char el0[] { '\e', '[', '0', 'K' };
     const char el0nl[] { '\e', '[', '0', 'K', '\n' };
 
     const char quit_cmd[] = "quit";
 
+    // Characters considered as parts of words.
+    std::string wordchars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    bool initialized = false;
+
+    int efd = -1;
+    int sfd = -1;
+
+    int cur_width = -1;
+    int cur_height = -1;
+
+    termios old_tios;
+    termios edit_tios;
+
   } // anonymous namespace
 
-
-  bool initialized = false;
-
-  int efd = -1;
-  int sfd = -1;
-
-  int cur_width = -1;
-  int cur_height = -1;
-
-  termios old_tios;
-  termios edit_tios;
 
   void init()
   {
@@ -125,8 +129,16 @@ namespace repl {
       nl,
       bs,
       del,
+      keypad,
       alt_b,
       alt_f,
+      home,
+      end,
+      back,
+      forward,
+      delword,
+      delbol,
+      deleol,
       sigint,
       sigquit,
       eol,
@@ -183,8 +195,16 @@ namespace repl {
     case states::initial:
       if (c == '\e')
         state = states::esc;
+      else if (c == '\001')
+        res = parsed::home;
+      else if (c == '\005')
+        res = parsed::end;
       else if (c == '\r')
         res = parsed::nl;
+      else if (c == '\v')
+        res = parsed::deleol;
+      else if (c == '\25')
+        res = parsed::delbol;
       else if (c == '\177')
         res = parsed::bs;
       else if (c < 0x80)
@@ -231,6 +251,15 @@ namespace repl {
       else if (c == '\r') {
         res = parsed::eol;
         state = states::initial;
+      } else if (c == '\177') {
+        res = parsed::delword;
+        state = states::initial;
+      } else if (c == 'b') {
+        res = parsed::back;
+        state = states::initial;
+      } else if (c == 'f') {
+        res = parsed::forward;
+        state = states::initial;
       } else {
         res = parsed::ch;
         state = states::initial;
@@ -252,8 +281,17 @@ namespace repl {
         case 'D':
           res = parsed::left;
           break;
+        case 'F':
+          res = parsed::end;
+          break;
+        case 'H':
+          res = parsed::home;
+          break;
         case 'R':
           res = parsed::cpr;
+          break;
+        case '~':
+          res = parsed::keypad;
           break;
         default:
           res = parsed::csi;
@@ -401,8 +439,9 @@ namespace repl {
   }
 
 
-  void redisplay(size_t p)
+  void redisplay()
   {
+    size_t p = pos;
     while (p < res.size()) {
       auto end = res.find('\n', p);
       auto here = (end == std::string::npos ? res.size() : end) - p;
@@ -414,6 +453,9 @@ namespace repl {
       for (int j = 0; j < input_start_col; ++j)
         ::write(STDOUT_FILENO, " ", 1);
     }
+    ::write(STDOUT_FILENO, el0, sizeof(el0));
+    auto[x,y] = move();
+    target_col = x - input_start_col;
   }
 
 
@@ -439,16 +481,37 @@ namespace repl {
       s += here + 1;
       n -= here + 1;
     }
-    redisplay(pos);
-    auto[x,y] = move(pos);
+    redisplay();
+    auto[x,_] = move();
     target_col = x - input_start_col;
   }
 
 
-  void del(size_t p, size_t n)
+  void del(size_t n)
   {
-    res.erase(p, n);
-    redisplay(p);
+    res.erase(pos, n);
+    move();
+    redisplay();
+  }
+
+
+  auto prev_word()
+  {
+    assert(! res.empty() && pos > 0);
+
+    auto p = pos;
+    if (p >= res.size() || ! wordchars.contains(res[p]) || ! wordchars.contains(res[p - 1])) {
+      if (auto last = res.find_last_of(wordchars, p - 1); last == std::string::npos)
+        return 0zu;
+      else
+        p = last;
+    }
+    if (auto last = res.find_last_not_of(wordchars, p); last == std::string::npos)
+      p = 0;
+    else
+      p = last + 1;
+
+    return p;
   }
 
 
@@ -503,12 +566,85 @@ namespace repl {
             insert(reinterpret_cast<char*>(buf), wp);
             break;
           case input_sm::parsed::bs:
-            ::write(11,"a",1);
             if (pos > 0) {
-            ::write(11,"b",1);
-              del(--pos, 1);
-              target_col = pos;
+              --pos;
+              del(1);
             }
+            break;
+          case input_sm::parsed::del:
+          handle_del:
+            if (res.size() > pos)
+              del(1);
+            break;
+          case input_sm::parsed::keypad:
+            {
+              auto nrs = numeric_parms<1>(reinterpret_cast<const char*>(buf) + 2, wp - 2, '~');
+
+              if (nrs.has_value())
+                switch ((*nrs)[0]) {
+                case 1:
+                  goto handle_home;
+                case 3:
+                  goto handle_del;
+                case 4:
+                  goto handle_end;
+                }
+            }
+            break;
+          case input_sm::parsed::home:
+          handle_home:
+            pos = 0;
+            move();
+            break;
+          case input_sm::parsed::end:
+          handle_end:
+            pos = res.size();
+            move();
+            break;
+          case input_sm::parsed::back:
+            if (! res.empty() && pos > 0) {
+              pos = prev_word();
+              auto[x,_] = move();
+              target_col = x - input_start_col;
+            }
+            break;
+          case input_sm::parsed::forward:
+            if (! res.empty() && pos < res.size()) {
+              if (! wordchars.contains(res[pos])) {
+                if (auto next = res.find_first_of(wordchars, pos + 1); next == std::string::npos) {
+                  pos = res.size();
+                  auto[x,_] = move();
+                  target_col = x - input_start_col;
+                  break;
+                } else
+                  pos = next;
+              }
+              if (auto next = res.find_first_not_of(wordchars, pos); next == std::string::npos)
+                pos = res.size();
+              else
+                pos = next;
+              auto[x,_] = move();
+              target_col = x - input_start_col;
+            }
+            break;
+          case input_sm::parsed::delword:
+            if (pos > 0) {
+              auto oldpos = pos;
+              pos = prev_word();
+              if (pos != oldpos)
+                del(oldpos - pos);
+            }
+            break;
+          case input_sm::parsed::delbol:
+            if (pos > 0) {
+              auto oldpos = pos;
+              pos = 0;
+              del(oldpos);
+            }
+            break;
+          case input_sm::parsed::deleol:
+            if (pos < res.size())
+              del(res.size() - pos);
             break;
           case input_sm::parsed::sigint:
             // XYZ Indicate user interrupt
