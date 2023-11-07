@@ -407,9 +407,9 @@ namespace repl {
       auto end = res.find('\n', p);
       auto here = (end == std::string::npos ? res.size() : end) - p;
       ::write(STDOUT_FILENO, res.data() + p, here);
-      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
       if (end == std::string::npos)
         break;
+      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
       p += here + 1;
       for (int j = 0; j < input_start_col; ++j)
         ::write(STDOUT_FILENO, " ", 1);
@@ -421,7 +421,7 @@ namespace repl {
   {
     assert(pos >= 0 && pos <= res.size());
     while (n > 0) {
-      auto[x,y] = coords(pos);
+      auto[_,y] = res.empty() ? std::make_pair(input_start_col, input_start_row) : coords(res.size() - 1);
       auto endp = static_cast<const char*>(memchr(s, '\n', n));
       auto here = endp == nullptr ? n : (endp - buf);
       res.insert(pos, s, here);
