@@ -30,6 +30,7 @@ namespace repl {
     const char dsr[] { '\e', '[', '6', 'n' };
     const char el0[] { '\e', '[', '0', 'K' };
     const char el0nl[] { '\e', '[', '0', 'K', '\n' };
+    const char su[] { '\e', '[', '1', 'S' };
 
     const char quit_cmd[] = "quit";
 
@@ -454,8 +455,10 @@ namespace repl {
         ::write(STDOUT_FILENO, " ", 1);
     }
     ::write(STDOUT_FILENO, el0, sizeof(el0));
-    auto[x,y] = move();
+#ifdef SELECT_REDRAW
+    auto[x,_] = move();
     target_col = x - input_start_col;
+#endif
   }
 
 
@@ -467,21 +470,33 @@ namespace repl {
       auto endp = static_cast<const char*>(memchr(s, '\n', n));
       auto here = endp == nullptr ? n : (endp - buf);
       res.insert(pos, s, here);
+#ifdef SELECT_REDRAW
       ::write(STDOUT_FILENO, s, here);
+#endif
       pos += here;
       if (endp == nullptr)
         break;
       res.insert(pos, 1, '\n');
+#ifdef SELECT_REDRAW
       ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
+#endif
       ++pos;
-      if (y + 1 == cur_height)
+      if (y + 1 == cur_height) {
         input_start_row -= 1;
+#ifndef SELECT_REDRAW
+        ::write(STDOUT_FILENO, su, sizeof(su));
+#endif
+      }
+#ifdef SELECT_REDRAW
       for (int j = 0; j < input_start_col; ++j)
         ::write(STDOUT_FILENO, " ", 1);
+#endif
       s += here + 1;
       n -= here + 1;
     }
+#ifdef SELECT_REDRAW
     redisplay();
+#endif
     auto[x,_] = move();
     target_col = x - input_start_col;
   }
@@ -513,6 +528,19 @@ namespace repl {
 
     return p;
   }
+
+
+#ifndef SELECT_REDRAW
+  void redraw_all()
+  {
+    auto save = pos;
+    pos = 0;
+    move();
+    redisplay();
+    pos = save;
+    move();
+  }
+#endif
 
 
   std::string read(const std::string& prompt)
@@ -548,6 +576,8 @@ namespace repl {
         if (nread <= 0)
           continue;
         nread += rp;
+        bool need_redraw = false;
+        bool moved = false;
         while (rp < nread) {
           auto lastch = buf[wp++] = buf[rp++];
           auto pres = sm.in(lastch);
@@ -556,25 +586,32 @@ namespace repl {
 
           switch (pres) {
           case input_sm::parsed::eol:
+            pos = res.size();
+            move();
             goto out;
           case input_sm::parsed::nl:
             // Translate for Unix systems.
             buf[wp - 1] = '\n';
             insert(reinterpret_cast<char*>(buf), wp);
+            need_redraw = true;
             break;
           case input_sm::parsed::ch:
             insert(reinterpret_cast<char*>(buf), wp);
+            need_redraw = true;
             break;
           case input_sm::parsed::bs:
             if (pos > 0) {
               --pos;
               del(1);
+              need_redraw = true;
             }
             break;
           case input_sm::parsed::del:
           handle_del:
-            if (res.size() > pos)
+            if (res.size() > pos) {
               del(1);
+              need_redraw = true;
+            }
             break;
           case input_sm::parsed::keypad:
             {
@@ -595,16 +632,19 @@ namespace repl {
           handle_home:
             pos = 0;
             move();
+            moved = true;
             break;
           case input_sm::parsed::end:
           handle_end:
             pos = res.size();
             move();
+            moved = true;
             break;
           case input_sm::parsed::back:
             if (! res.empty() && pos > 0) {
               pos = prev_word();
               auto[x,_] = move();
+              moved = true;
               target_col = x - input_start_col;
             }
             break;
@@ -624,6 +664,7 @@ namespace repl {
               else
                 pos = next;
               auto[x,_] = move();
+              moved = true;
               target_col = x - input_start_col;
             }
             break;
@@ -631,8 +672,10 @@ namespace repl {
             if (pos > 0) {
               auto oldpos = pos;
               pos = prev_word();
-              if (pos != oldpos)
+              if (pos != oldpos) {
                 del(oldpos - pos);
+                need_redraw = true;
+              }
             }
             break;
           case input_sm::parsed::delbol:
@@ -640,15 +683,19 @@ namespace repl {
               auto oldpos = pos;
               pos = 0;
               del(oldpos);
+              need_redraw = true;
             }
             break;
           case input_sm::parsed::deleol:
-            if (pos < res.size())
+            if (pos < res.size()) {
               del(res.size() - pos);
+              need_redraw = true;
+            }
             break;
           case input_sm::parsed::sigint:
             // XYZ Indicate user interrupt
             res = "";
+            need_redraw = true;
             goto out;
           case input_sm::parsed::eot:
             if (res.empty()) {
@@ -663,6 +710,7 @@ namespace repl {
             if (pos > 0) {
               --pos;
               auto[x,_] = move();
+              moved = true;
               target_col = x - input_start_col;
             }
             break;
@@ -670,6 +718,7 @@ namespace repl {
             if (pos < res.size()) {
               ++pos;
               auto[x,_] = move();
+              moved = true;
               target_col = x - input_start_col;
             }
             break;
@@ -686,6 +735,7 @@ namespace repl {
               else
                 pos = curline_start - 1;
               move();
+              moved = true;
             }
             break;
           case input_sm::parsed::down:
@@ -701,6 +751,7 @@ namespace repl {
               else
                 pos = nextnextline_start - 1;
               move();
+              moved = true;
             }
             break;
           case input_sm::parsed::cpr:
@@ -731,6 +782,12 @@ namespace repl {
           }
 
           wp = 0;
+        }
+
+        if (need_redraw) {
+          redraw_all();
+          if (moved)
+            ;
         }
       } else if (evs[0].data.fd == sfd) {
         signalfd_siginfo ssi;
