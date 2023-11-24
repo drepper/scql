@@ -65,6 +65,7 @@ namespace scql {
 
     list(const location& lloc_) : part(id_type::list, lloc_), l { } { }
     list(part::cptr_type&& p, const location& lloc_) : part(id_type::list, lloc_), l() { l.emplace_back(std::move(p)); }
+    list(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::list, lloc_), l() { l.emplace_back(std::move(p1)); l.emplace_back(std::move(p2)); }
     ~list() override = default;
 
     void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
@@ -72,6 +73,7 @@ namespace scql {
 
     static auto alloc(const location& lloc_) { return std::make_unique<list>(lloc_); }
     static auto alloc(part::cptr_type&& p, const location& lloc_) { return std::make_unique<list>(std::move(p), lloc_); }
+    static auto alloc(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) { return std::make_unique<list>(std::move(p1), std::move(p2), lloc_); }
 
     std::string format() const override;
 

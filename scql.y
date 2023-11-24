@@ -35,10 +35,7 @@ extern void yyerror(const YYLTYPE* l, const char* s);
 
 %%
 
-start:            END {
-                    scql::result = nullptr;
-                  }
-                | ATOM END {
+start:            ATOM END {
                     scql::result = std::move($1);
                   }
                 | pipeline END {
@@ -46,29 +43,54 @@ start:            END {
                   }
                 ;
 
-pipeline:         stage {
+pipeline:         pipeline_list {
                     $$ = std::move($1);
                   }
-                | stage '|' pipeline {
-                    if ($3->is(scql::id_type::pipeline)) {
+                | pipeline_list '|' pipeline {
+                    if ($3 && $3->is(scql::id_type::pipeline)) {
                       scql::as<scql::pipeline>($3)->prepend(std::move($1));
-                      $$ = std::move($3);
                       $3->lloc.first_line = $1->lloc.first_line;
                       $3->lloc.first_column = $1->lloc.first_column;
+                      $$ = std::move($3);
                     } else {
-                      auto lloc = $3->lloc;
-                      lloc.first_line = $1->lloc.first_line;
-                      lloc.first_column = $1->lloc.first_column;
+                      auto lloc = $1->lloc;
+                      if ($3) {
+                        lloc.last_line = $3->lloc.last_line;
+                        lloc.last_column = $3->lloc.last_column;
+                      }
                       $$ = scql::pipeline::alloc(std::move($1), std::move($3), lloc);
                     }
                   }
-                | stage '|' error {
-                    $$ = scql::pipeline::alloc(std::move($1), nullptr  , yylloc);
+                | pipeline_list '|' error {
+                    $$ = scql::pipeline::alloc(std::move($1), nullptr, $1 ? $1->lloc : yylloc);
                   }
                 ;
 
-stage:            IDENT {
-                     $$ = std::move($1);
+pipeline_list:    stage {
+                    $$ = std::move($1);
+                  }
+                | stage ',' pipeline_list {
+                    if ($3 && $3->is(scql::id_type::list)) {
+                      scql::as<scql::list>($3)->prepend(std::move($1));
+                      $3->lloc.first_line = $1->lloc.first_line;
+                      $3->lloc.first_column = $1->lloc.first_column;
+                      $$ = std::move($3);
+                    } else {
+                      auto lloc = $1 ? $1->lloc : yylloc;
+                      if ($3) {
+                        lloc.last_line = $3->lloc.last_line;
+                        lloc.last_column = $3->lloc.last_column;
+                      }
+                      $$ = scql::list::alloc(std::move($1), std::move($3), lloc);
+                    }
+                  }
+                ;
+
+stage:            %empty {
+                    $$ = nullptr;
+                  }
+                | IDENT {
+                    $$ = std::move($1);
                   }
                 | IDENT '[' arglist_opt ']' {
                     auto lloc = yylloc;
@@ -90,20 +112,8 @@ stage:            IDENT {
                     n->missing_close = true;
                     $$ = std::move(n);
                   }
-                | '(' pipeline_list ')' {
-                    $$ = std::move($1);
-                  }
-                ;
-
-pipeline_list:    %empty {
-                    $$ = nullptr;
-                  }
-                | pipeline {
-                    $$ = scql::list::alloc(std::move($1), yylloc);
-                  }
-                | pipeline ',' pipeline_list {
-                    scql::as<scql::list>($3)->prepend(std::move($1));
-                    $$ = std::move($3);
+                | '(' pipeline ')' {
+                    $$ = std::move($2);
                   }
                 ;
 
