@@ -21,6 +21,12 @@
 #include <sys/ioctl.h>
 #include <sys/signalfd.h>
 
+#include "scql.hh"
+#include "scql-tab.hh"
+#include "scql-scan.hh"
+
+using namespace std::literals;
+
 
 namespace repl {
 
@@ -426,11 +432,23 @@ namespace repl {
   }
 
 
+  void goto_xy(int x, int y)
+  {
+    auto s = std::format("\e[{};{}H", 1 + y, 1 + x);
+    ::write(STDOUT_FILENO, s.c_str(), s.size());
+  }
+
+
+  void clreol()
+  {
+    ::write(STDOUT_FILENO, el0, sizeof(el0));
+  }
+
+
   std::pair<int,int> move(size_t p)
   {
     auto[x,y] = coords(p);
-    auto s = std::format("\e[{};{}H", 1 + y, 1 + x);
-    ::write(STDOUT_FILENO, s.c_str(), s.size());
+    goto_xy(x, y);
     return std::make_pair(x, y);
   }
 
@@ -541,6 +559,18 @@ namespace repl {
     move();
   }
 #endif
+
+
+    void debug(const std::string& s)
+    {
+      for (int i = 0; i < 10; ++i) {
+        goto_xy(0, i);
+        clreol();
+      }
+      goto_xy(0, 0);
+      ::write(STDOUT_FILENO, s.data(), s.size());
+      move();
+    }
 
 
   std::string read(const std::string& prompt)
@@ -785,6 +815,20 @@ namespace repl {
         }
 
         if (need_redraw) {
+          while (true) {
+            auto buffer = scql_scan_bytes(res.data(), res.size());
+
+            scql::result.reset();
+
+            auto yyres = yyparse();
+            if (yyres != 0) {
+
+            }
+
+            break;
+          }
+          debug(scql::result ? scql::result->format() : ""s);
+
           redraw_all();
           if (moved)
             ;
