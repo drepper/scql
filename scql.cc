@@ -29,8 +29,11 @@ namespace scql {
   }
 
 
-  bool list::fixup(std::string&, size_t, int, int) const
+  bool list::fixup(std::string& s, size_t p, int x, int y) const
   {
+    for (const auto& e : l)
+      if (e && e->fixup(s, p, x, y))
+        return true;
     return false;
   }
 
@@ -53,8 +56,11 @@ namespace scql {
   }
 
 
-  bool pipeline::fixup(std::string&, size_t, int, int) const
+  bool pipeline::fixup(std::string& s, size_t p, int x, int y) const
   {
+    for (const auto& e : l)
+      if (e && e->fixup(s, p, x, y))
+        return true;
     return false;
   }
 
