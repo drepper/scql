@@ -418,13 +418,13 @@ namespace repl {
   size_t pos = 0;
 
 
-  std::pair<int,int> coords(size_t p)
+  std::pair<int,int> string_coords(size_t p)
   {
-    int x = input_start_col;
-    int y = input_start_row;
+    int x = 0;
+    int y = 0;
     for (size_t i = 0; i < p; ++i)
       if (res[i] == '\n') {
-        x = input_start_col;
+        x = 0;
         ++y;
       } else
         ++x;
@@ -432,16 +432,23 @@ namespace repl {
   }
 
 
+  std::pair<int,int> coords(size_t p)
+  {
+    auto[x,y] = string_coords(p);
+    return std::make_pair(x + input_start_col, y + input_start_row);
+  }
+
+
   void goto_xy(int x, int y)
   {
     auto s = std::format("\e[{};{}H", 1 + y, 1 + x);
-    ::write(STDOUT_FILENO, s.c_str(), s.size());
+    auto n [[maybe_unused]] = ::write(STDOUT_FILENO, s.c_str(), s.size());
   }
 
 
   void clreol()
   {
-    ::write(STDOUT_FILENO, el0, sizeof(el0));
+    auto n [[maybe_unused]] = ::write(STDOUT_FILENO, el0, sizeof(el0));
   }
 
 
@@ -464,15 +471,15 @@ namespace repl {
     while (p < res.size()) {
       auto end = res.find('\n', p);
       auto here = (end == std::string::npos ? res.size() : end) - p;
-      ::write(STDOUT_FILENO, res.data() + p, here);
+      auto n [[maybe_unused]] = ::write(STDOUT_FILENO, res.data() + p, here);
       if (end == std::string::npos)
         break;
-      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
+      n = ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
       p += here + 1;
       for (int j = 0; j < input_start_col; ++j)
-        ::write(STDOUT_FILENO, " ", 1);
+        n = ::write(STDOUT_FILENO, " ", 1);
     }
-    ::write(STDOUT_FILENO, el0, sizeof(el0));
+    auto n [[maybe_unused]] = ::write(STDOUT_FILENO, el0, sizeof(el0));
 #ifdef SELECT_REDRAW
     auto[x,_] = move();
     target_col = x - input_start_col;
@@ -482,7 +489,7 @@ namespace repl {
 
   void insert(const char* s, size_t n)
   {
-    assert(pos >= 0 && pos <= res.size());
+    assert(pos <= res.size());
     while (n > 0) {
       auto[_,y] = res.empty() ? std::make_pair(input_start_col, input_start_row) : coords(res.size() - 1);
       auto endp = static_cast<const char*>(memchr(s, '\n', n));
@@ -496,18 +503,18 @@ namespace repl {
         break;
       res.insert(pos, 1, '\n');
 #ifdef SELECT_REDRAW
-      ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
+      :auto n [[maybe_unused]] = :write(STDOUT_FILENO, el0nl, sizeof(el0nl));
 #endif
       ++pos;
       if (y + 1 == cur_height) {
         input_start_row -= 1;
 #ifndef SELECT_REDRAW
-        ::write(STDOUT_FILENO, su, sizeof(su));
+        auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, su, sizeof(su));
 #endif
       }
 #ifdef SELECT_REDRAW
       for (int j = 0; j < input_start_col; ++j)
-        ::write(STDOUT_FILENO, " ", 1);
+        auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, " ", 1);
 #endif
       s += here + 1;
       n -= here + 1;
@@ -568,7 +575,7 @@ namespace repl {
         clreol();
       }
       goto_xy(0, 0);
-      ::write(STDOUT_FILENO, s.data(), s.size());
+      auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, s.data(), s.size());
       move();
     }
 
@@ -589,7 +596,7 @@ namespace repl {
     ::tcsetattr(STDIN_FILENO, TCSANOW, &edit_tios);
 
     // Request the current cursor position.
-    ::write(STDOUT_FILENO, dsr, sizeof(dsr));
+    auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, dsr, sizeof(dsr));
     bool received_position = false;
 
     input_reset();
@@ -791,18 +798,18 @@ namespace repl {
               if (! received_position) {
                 if (nrs.has_value()) {
                   // Finally show the prompt:
-                  ::write(STDOUT_FILENO, prompt.c_str(), prompt.size());
+                  nn = ::write(STDOUT_FILENO, prompt.c_str(), prompt.size());
                   prompt_row = (*nrs)[0] - 1;
                   prompt_col = (*nrs)[1] - 1;
                   received_position = true;
                 }
-                ::write(STDOUT_FILENO, dsr, sizeof(dsr));
+                nn = ::write(STDOUT_FILENO, dsr, sizeof(dsr));
               } else {
                 if (nrs.has_value()) {
                   input_start_row = (*nrs)[0] - 1;
                   input_start_col = (*nrs)[1] - 1;
                 } else
-                  ::write(STDOUT_FILENO, dsr, sizeof(dsr));
+                  nn = ::write(STDOUT_FILENO, dsr, sizeof(dsr));
               }
             }
             break;
@@ -817,12 +824,16 @@ namespace repl {
         if (need_redraw) {
           while (true) {
             auto buffer = scql_scan_bytes(res.data(), res.size());
+            // XYZ no need to free buffer
+            (void) buffer;
 
             scql::result.reset();
 
             auto yyres = yyparse();
             if (yyres != 0) {
-
+              auto[x, y] = string_coords(pos);
+              if (scql::result && scql::result->fixup(res, pos, x, y))
+                continue;
             }
 
             break;
@@ -830,8 +841,8 @@ namespace repl {
           debug(scql::result ? scql::result->format() : ""s);
 
           redraw_all();
-          if (moved)
-            ;
+          if (moved) {
+          }
         }
       } else if (evs[0].data.fd == sfd) {
         signalfd_siginfo ssi;

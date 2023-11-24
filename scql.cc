@@ -15,7 +15,7 @@ namespace scql {
   {
     auto s = std::format("{{list{}", lloc.format());
     bool first = true;
-    for (const auto e : l) {
+    for (const auto& e : l) {
       if (! first)
         s += ", ";
       if (e)
@@ -29,11 +29,17 @@ namespace scql {
   }
 
 
+  bool list::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
+  }
+
+
   std::string pipeline::format() const
   {
     auto s = std::format("{{pipeline{}", lloc.format());
     bool first = true;
-    for (const auto e : l) {
+    for (const auto& e : l) {
       if (! first)
         s += " | ";
       if (e)
@@ -47,9 +53,21 @@ namespace scql {
   }
 
 
+  bool pipeline::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
+  }
+
+
   std::string integer::format() const
   {
     return std::format("{{integer{}}}", lloc.format());
+  }
+
+
+  bool integer::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
   }
 
 
@@ -59,9 +77,25 @@ namespace scql {
   }
 
 
+  bool floatnum::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
+  }
+
+
   std::string string::format() const
   {
     return std::format("{{string{}}}", lloc.format());
+  }
+
+
+  bool string::fixup(std::string& s, size_t p, int x, int y) const
+  {
+    if (missing_close && y == lloc.last_line && x == lloc.last_column) {
+      s.insert(p, "\"");
+      return true;
+    }
+    return false;
   }
 
 
@@ -71,9 +105,25 @@ namespace scql {
   }
 
 
+  bool ident::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
+  }
+
+
   std::string fcall::format() const
   {
     return std::format("{{fcall{} {} [{}]}}", lloc.format(), fname ? fname->format() : "<UNKNOWN>"s, args ? args->format() : ""s);
+  }
+
+
+  bool fcall::fixup(std::string& s, size_t p, int x, int y) const
+  {
+    if (missing_close && y == lloc.last_line && x == lloc.last_column) {
+      s.insert(p, "]");
+      return true;
+    }
+    return false;
   }
 
 

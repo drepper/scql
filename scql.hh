@@ -37,8 +37,11 @@ namespace scql {
     using cptr_type = std::shared_ptr<part>;
 
     part(id_type id_, const location& lloc_) : id(id_), lloc(lloc_) { }
+    virtual ~part() = default;
 
     virtual std::string format() const = 0;
+
+    virtual bool fixup(std::string& s, size_t p, int x, int y) const = 0;
 
     bool is(id_type i) const { return id == i; }
 
@@ -52,6 +55,7 @@ namespace scql {
 
     list(const location& lloc_) : part(id_type::list, lloc_), l { } { }
     list(part::cptr_type&& p, const location& lloc_) : part(id_type::list, lloc_), l() { l.emplace_back(std::move(p)); }
+    ~list() override = default;
 
     void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
     void add(part::cptr_type&& p) { l.emplace_back(std::move(p)); }
@@ -61,6 +65,8 @@ namespace scql {
 
     std::string format() const override;
 
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
+
     std::vector<part::cptr_type> l;
   };
 
@@ -69,12 +75,15 @@ namespace scql {
     using cptr_type = std::shared_ptr<pipeline>;
 
     pipeline(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::pipeline, lloc_), l() { l.emplace_back(std::move(p1)); l.emplace_back(std::move(p2)); }
+    ~pipeline() override = default;
 
     void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
 
     static auto alloc(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) { return std::make_unique<pipeline>(std::move(p1), std::move(p2), lloc_); }
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     std::vector<part::cptr_type> l;
   };
@@ -84,10 +93,13 @@ namespace scql {
     using cptr_type = std::shared_ptr<integer>;
 
     integer(intmax_t v, const location& lloc_) : part(id_type::integer, lloc_), val(v) { }
+    ~integer() override = default;
 
     static auto alloc(intmax_t v, const location& lloc_) { return std::make_unique<integer>(v, lloc_); }
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     intmax_t val;
   };
@@ -99,10 +111,13 @@ namespace scql {
     using float_type = double;
 
     floatnum(float_type v, const location& lloc_) : part(id_type::floatnum, lloc_), val(v) { }
+    ~floatnum() override = default;
 
     static auto alloc(float_type v, const location& lloc_) { return std::make_unique<floatnum>(v, lloc_); }
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     float_type val;
   };
@@ -113,12 +128,15 @@ namespace scql {
 
     string(const std::string& v, const location& lloc_) : part(id_type::string, lloc_), val(v) { }
     string(std::string&& v, const location& lloc_) : part(id_type::string, lloc_), val(std::move(v)) { }
+    ~string() override = default;
 
     static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<string>(v, lloc_); }
     static auto alloc(std::string&& v, const location& lloc_) { return std::make_unique<string>(std::move(v), lloc_); }
     static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<string>(std::string(s, l), lloc_); }
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     std::string val;
 
@@ -131,12 +149,15 @@ namespace scql {
 
     ident(const std::string& v, const location& lloc_) : part(id_type::ident, lloc_), val(v) { }
     ident(std::string&& v, const location& lloc_) : part(id_type::ident, lloc_), val(std::move(v)) { }
+    ~ident() override = default;
 
     static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<ident>(v, lloc_); }
     static auto alloc(std::string&& v, const location& lloc_) { return std::make_unique<ident>(std::move(v), lloc_); }
     static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<ident>(std::string(s, l), lloc_); }
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     std::string val;
   };
@@ -146,6 +167,7 @@ namespace scql {
     using cptr_type = std::shared_ptr<fcall>;
 
     fcall(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args(std::move(args_)) { }
+    ~fcall() override = default;
 
     static auto alloc(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(args_), lloc_); }
 
@@ -153,6 +175,8 @@ namespace scql {
     part::cptr_type args;
 
     std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     bool missing_close = false;
   };
