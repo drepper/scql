@@ -50,13 +50,17 @@ pipeline:         stage {
                     $$ = std::move($1);
                   }
                 | stage '|' pipeline {
-                    $3->lloc.first_line = $1->lloc.first_line;
-                    $3->lloc.first_column = $1->lloc.first_column;
                     if ($3->is(scql::id_type::pipeline)) {
                       scql::as<scql::pipeline>($3)->prepend(std::move($1));
                       $$ = std::move($3);
-                    } else
-                      $$ = scql::pipeline::alloc(std::move($1), std::move($3), $3->lloc);
+                      $3->lloc.first_line = $1->lloc.first_line;
+                      $3->lloc.first_column = $1->lloc.first_column;
+                    } else {
+                      auto lloc = $3->lloc;
+                      lloc.first_line = $1->lloc.first_line;
+                      lloc.first_column = $1->lloc.first_column;
+                      $$ = scql::pipeline::alloc(std::move($1), std::move($3), lloc);
+                    }
                   }
                 | stage '|' error {
                     $$ = scql::pipeline::alloc(std::move($1), nullptr  , yylloc);

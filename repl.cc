@@ -143,6 +143,7 @@ namespace repl {
       end,
       back,
       forward,
+      delline,
       delword,
       delbol,
       deleol,
@@ -206,6 +207,8 @@ namespace repl {
         res = parsed::home;
       else if (c == '\005')
         res = parsed::end;
+      else if (c == '\010')
+        res = parsed::delline;
       else if (c == '\r')
         res = parsed::nl;
       else if (c == '\v')
@@ -465,13 +468,13 @@ namespace repl {
   }
 
 
-  void redisplay()
+  void redisplay(std::string& s)
   {
-    size_t p = pos;
-    while (p < res.size()) {
-      auto end = res.find('\n', p);
-      auto here = (end == std::string::npos ? res.size() : end) - p;
-      auto n [[maybe_unused]] = ::write(STDOUT_FILENO, res.data() + p, here);
+    size_t p = 0;
+    while (p < s.size()) {
+      auto end = s.find('\n', p);
+      auto here = (end == std::string::npos ? s.size() : end) - p;
+      auto n [[maybe_unused]] = ::write(STDOUT_FILENO, s.data() + p, here);
       if (end == std::string::npos)
         break;
       n = ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
@@ -480,10 +483,17 @@ namespace repl {
         n = ::write(STDOUT_FILENO, " ", 1);
     }
     auto n [[maybe_unused]] = ::write(STDOUT_FILENO, el0, sizeof(el0));
-#ifdef SELECT_REDRAW
-    auto[x,_] = move();
-    target_col = x - input_start_col;
-#endif
+  }
+
+
+  void redraw_all(const scql::linear& lin)
+  {
+    auto[x, y] = string_coords(pos);
+    auto l = lin.at(x, y);
+
+    move(0);
+    redisplay(res);
+    move();
   }
 
 
@@ -495,33 +505,18 @@ namespace repl {
       auto endp = static_cast<const char*>(memchr(s, '\n', n));
       auto here = endp == nullptr ? n : (endp - buf);
       res.insert(pos, s, here);
-#ifdef SELECT_REDRAW
-      ::write(STDOUT_FILENO, s, here);
-#endif
       pos += here;
       if (endp == nullptr)
         break;
       res.insert(pos, 1, '\n');
-#ifdef SELECT_REDRAW
-      :auto n [[maybe_unused]] = :write(STDOUT_FILENO, el0nl, sizeof(el0nl));
-#endif
       ++pos;
       if (y + 1 == cur_height) {
         input_start_row -= 1;
-#ifndef SELECT_REDRAW
         auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, su, sizeof(su));
-#endif
       }
-#ifdef SELECT_REDRAW
-      for (int j = 0; j < input_start_col; ++j)
-        auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, " ", 1);
-#endif
       s += here + 1;
       n -= here + 1;
     }
-#ifdef SELECT_REDRAW
-    redisplay();
-#endif
     auto[x,_] = move();
     target_col = x - input_start_col;
   }
@@ -531,7 +526,6 @@ namespace repl {
   {
     res.erase(pos, n);
     move();
-    redisplay();
   }
 
 
@@ -553,19 +547,6 @@ namespace repl {
 
     return p;
   }
-
-
-#ifndef SELECT_REDRAW
-  void redraw_all()
-  {
-    auto save = pos;
-    pos = 0;
-    move();
-    redisplay();
-    pos = save;
-    move();
-  }
-#endif
 
 
     void debug(const std::string& s)
@@ -717,6 +698,13 @@ namespace repl {
               }
             }
             break;
+          case input_sm::parsed::delline:
+            if (! res.empty()) {
+              pos = 0;
+              del(res.size());
+              need_redraw = true;
+            }
+            break;
           case input_sm::parsed::delbol:
             if (pos > 0) {
               auto oldpos = pos;
@@ -825,17 +813,19 @@ namespace repl {
 
         if (need_redraw) {
           while (true) {
-            auto buffer = scql_scan_bytes(res.data(), res.size());
-            // XYZ no need to free buffer
-            (void) buffer;
-
             scql::result.reset();
 
-            auto yyres = yyparse();
-            if (yyres != 0) {
-              auto[x, y] = string_coords(pos);
-              if (scql::result && scql::result->fixup(res, pos, x, y))
-                continue;
+            if (! res.empty()) {
+              auto buffer = scql_scan_bytes(res.data(), res.size());
+              // XYZ no need to free buffer
+              (void) buffer;
+
+              auto yyres = yyparse();
+              if (yyres != 0) {
+                auto[x, y] = string_coords(pos);
+                if (scql::result && scql::result->fixup(res, pos, x, y))
+                  continue;
+              }
             }
 
             break;
@@ -843,8 +833,10 @@ namespace repl {
 
           if (scql::result)
             lin = scql::linear(scql::result);
+          else
+            lin = scql::linear();
 
-          redraw_all();
+          redraw_all(lin);
 
           // Just in case...
           moved = true;
