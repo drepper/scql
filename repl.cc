@@ -601,6 +601,8 @@ namespace repl {
 
     input_reset();
 
+    scql::linear lin;
+
     while (true) {
       epoll_event evs[1];
       auto n = ::epoll_wait(efd, evs, sizeof(evs) / sizeof(evs[0]), -1);
@@ -838,10 +840,30 @@ namespace repl {
 
             break;
           }
-          debug(scql::result ? scql::result->format() : ""s);
+
+          if (scql::result)
+            lin = scql::linear(scql::result);
 
           redraw_all();
-          if (moved) {
+
+          // Just in case...
+          moved = true;
+        }
+
+        if (moved) {
+          if (lin.items.empty())
+            debug(""s);
+          else {
+            auto[x, y] = string_coords(pos);
+
+            std::string s;
+            for (auto& e : lin.at(x, y)) {
+              if (! s.empty())
+                s += '\n';
+              s += e->format();
+            }
+
+            debug(s);
           }
         }
       } else if (evs[0].data.fd == sfd) {

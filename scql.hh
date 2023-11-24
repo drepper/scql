@@ -3,9 +3,13 @@
 
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
+
+// XYZ Debugging
+// #include <iostream>
 
 
 namespace scql {
@@ -32,7 +36,10 @@ namespace scql {
 #define YYLTYPE scql::location
 
 
-  struct part {
+#pragma GCC diagnostic push
+// This warning must be disable due to the std::enable_shared_from_this class.
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+  struct part : std::enable_shared_from_this<part> {
     // This type should actually be std::unique_ptr but this runs into problems with the parser generated code.
     using cptr_type = std::shared_ptr<part>;
 
@@ -43,11 +50,14 @@ namespace scql {
 
     virtual bool fixup(std::string& s, size_t p, int x, int y) const = 0;
 
+    virtual void prefix_map(std::function<void(part::cptr_type)> fct);
+
     bool is(id_type i) const { return id == i; }
 
     id_type id;
     location lloc;
   };
+#pragma GCC diagnostic pop
 
 
   struct list : part {
@@ -67,6 +77,8 @@ namespace scql {
 
     bool fixup(std::string& s, size_t p, int x, int y) const override;
 
+    void prefix_map(std::function<void(part::cptr_type)> fct) override;
+
     std::vector<part::cptr_type> l;
   };
 
@@ -84,6 +96,8 @@ namespace scql {
     std::string format() const override;
 
     bool fixup(std::string& s, size_t p, int x, int y) const override;
+
+    void prefix_map(std::function<void(part::cptr_type)> fct) override;
 
     std::vector<part::cptr_type> l;
   };
@@ -178,6 +192,8 @@ namespace scql {
 
     bool fixup(std::string& s, size_t p, int x, int y) const override;
 
+    void prefix_map(std::function<void(part::cptr_type)> fct) override;
+
     bool missing_close = false;
   };
 
@@ -192,19 +208,22 @@ namespace scql {
   using yyscan_t = void*;
 
 
-  struct scanner {
-    scanner() { }
-    scanner(const scanner&) = delete;
-    scanner& operator=(const scanner&) = delete;
-    ~scanner() { }
+  struct linear {
+    struct item {
+      location lloc;
+      part::cptr_type p;
+    };
 
-    operator yyscan_t() { return yy; }
+    linear() { }
+    linear(part::cptr_type& root);
 
-  private:
-    yyscan_t yy { };
+    std::vector<part::cptr_type> at(int x, int y) const;
+
+    std::vector<item> items { };
   };
 
-  extern scanner scanner;
+
+
 
   extern part::cptr_type result;
 

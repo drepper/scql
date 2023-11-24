@@ -11,9 +11,15 @@ namespace scql {
   }
 
 
+  void part::prefix_map(std::function<void(part::cptr_type)> fct)
+  {
+    fct(shared_from_this());
+  }
+
+
   std::string list::format() const
   {
-    auto s = std::format("{{list{}", lloc.format());
+    auto s = std::format("{{list{} ", lloc.format());
     bool first = true;
     for (const auto& e : l) {
       if (! first)
@@ -38,9 +44,18 @@ namespace scql {
   }
 
 
+  void list::prefix_map(std::function<void(part::cptr_type)> fct)
+  {
+    fct(shared_from_this());
+    for (auto& e : l)
+      if (e)
+        e->prefix_map(fct);
+  }
+
+
   std::string pipeline::format() const
   {
-    auto s = std::format("{{pipeline{}", lloc.format());
+    auto s = std::format("{{pipeline{} ", lloc.format());
     bool first = true;
     for (const auto& e : l) {
       if (! first)
@@ -62,6 +77,15 @@ namespace scql {
       if (e && e->fixup(s, p, x, y))
         return true;
     return false;
+  }
+
+
+  void pipeline::prefix_map(std::function<void(part::cptr_type)> fct)
+  {
+    fct(shared_from_this());
+    for (auto& e : l)
+      if (e)
+        e->prefix_map(fct);
   }
 
 
@@ -130,6 +154,15 @@ namespace scql {
       return true;
     }
     return false;
+  }
+
+
+  void fcall::prefix_map(std::function<void(part::cptr_type)> fct)
+  {
+    fct(shared_from_this());
+    fct(fname);
+    if (args)
+      args->prefix_map(fct);
   }
 
 

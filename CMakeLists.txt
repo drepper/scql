@@ -48,4 +48,4 @@ cmake_policy(SET CMP0098 NEW)
 set_source_files_properties(scql-tab.cc PROPERTIES COMPILE_FLAGS "-Wno-redundant-decls -Wno-free-nonheap-object")
 set_source_files_properties(scql-scan.cc PROPERTIES COMPILE_FLAGS "-Wno-useless-cast -Wno-sign-compare -Wno-redundant-decls")
 
-add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS})
+add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS} linear.cc)
