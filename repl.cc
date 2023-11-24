@@ -486,13 +486,54 @@ namespace repl {
   }
 
 
+  const std::string color_ident = "\e[38;5;200m";
+  const std::string color_fname = "\e[38;5;208m";
+  const std::string color_integer = "\e[38;5;118m";
+  const std::string color_floatnum = "\e[38;5;33m";
+  const std::string color_off = "\e[0m";
+
   void redraw_all(const scql::linear& lin)
   {
-    auto[x, y] = string_coords(pos);
-    auto l = lin.at(x, y);
+    std::string tr;
+
+    scql::part::cptr_type last = nullptr;
+    for (size_t p = 0; p < res.size(); ++p) {
+      auto[x, y] = string_coords(p);
+      auto l = lin.at(x, y);
+
+      if (! l.empty() && last != l.back()) {
+        switch (l.back()->id) {
+        case scql::id_type::ident:
+          if (l.size() > 1 && l[l.size() - 2]->id == scql::id_type::fcall)
+            tr += color_fname;
+          else
+            tr += color_ident;
+          last = l.back();
+          break;
+        case scql::id_type::integer:
+          tr += color_integer;
+          last = l.back();
+          break;
+        case scql::id_type::floatnum:
+          tr += color_floatnum;
+          last = l.back();
+          break;
+        default:
+          if (last != nullptr) {
+            tr += color_off;
+            last = nullptr;
+          }
+          break;
+        }
+      }
+
+      tr += res[p];
+    }
+    if (last)
+      tr += color_off;
 
     move(0);
-    redisplay(res);
+    redisplay(tr);
     move();
   }
 
