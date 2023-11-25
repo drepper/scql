@@ -56,6 +56,7 @@ namespace scql {
     virtual void prefix_map(std::function<void(part::cptr_type)> fct);
 
     bool is(id_type i) const { return id == i; }
+    bool expandable() const;
 
     id_type id;
     location lloc;
@@ -265,6 +266,10 @@ namespace scql {
 
     linear() { }
     linear(part::cptr_type& root);
+
+    auto empty() const { return items.empty(); }
+    const auto& back() const { return items.back(); }
+    auto& back() { return items.back(); }
 
     std::vector<part::cptr_type> at(int x, int y) const;
 

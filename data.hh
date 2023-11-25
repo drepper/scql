@@ -35,7 +35,7 @@ namespace scql::data {
   struct data_info {
     data_info();
 
-    std::list<std::string> check(const std::string& pfx);
+    std::vector<std::string> check(const std::string& pfx);
 
     void add(const std::string& name, schema s);
 

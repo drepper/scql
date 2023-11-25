@@ -21,9 +21,9 @@ namespace scql::data {
   }
 
 
-  std::list<std::string> data_info::check(const std::string& pfx)
+  std::vector<std::string> data_info::check(const std::string& pfx)
   {
-    std::list<std::string> res;
+    std::vector<std::string> res;
     for (auto[n,_] : known)
       if (n.starts_with(pfx))
         res.emplace_back(n);

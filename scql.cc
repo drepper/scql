@@ -11,6 +11,12 @@ namespace scql {
   }
 
 
+  bool part::expandable() const
+  {
+    return id == id_type::ident || id == id_type::datacell || id == id_type::codecell || id == id_type::computecell;
+  }
+
+
   void part::prefix_map(std::function<void(part::cptr_type)> fct)
   {
     fct(shared_from_this());

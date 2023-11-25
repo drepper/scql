@@ -135,6 +135,7 @@ namespace repl {
       parsing,
       ch,
       nl,
+      tab,
       bs,
       del,
       keypad,
@@ -210,6 +211,8 @@ namespace repl {
         res = parsed::end;
       else if (c == '\010')
         res = parsed::delline;
+      else if (c == '\t')
+        res = parsed::tab;
       else if (c == '\r')
         res = parsed::nl;
       else if (c == '\v')
@@ -679,6 +682,55 @@ namespace repl {
             pos = res.size();
             move();
             goto out;
+          case input_sm::parsed::tab:
+            if (! lin.empty()) {
+              std::vector<std::string> matches;
+              std::string sofar;
+              auto[x, y] = string_coords(pos);
+              auto l = lin.at(x, y);
+              scql::part::cptr_type last = nullptr;
+              if (! l.empty()) {
+                last = l.back();
+                if (last->expandable()) {
+                  if (last->is(scql::id_type::datacell)) {
+                  expand_datacell:
+                    auto d = scql::as<scql::datacell>(last);
+                    sofar = d->val;
+                    matches = scql::data::available.check(sofar);
+                  }
+
+                  if (! matches.empty()) {
+                    // Find longest common prefix.
+                    std::string repl = matches[0];
+                    for (size_t i = 1; ! repl.empty() && i < matches.size(); ++i) {
+                      size_t j = 0;
+                      while (j < repl.size() && j < matches[i].size())
+                        if (repl[j] != matches[i][j])
+                          break;
+                        else
+                          ++j;
+                      repl.resize(j);
+                    }
+
+                    if (! repl.empty() && repl != sofar) {
+                      assert(repl.starts_with(sofar));
+                      size_t nadded = repl.size() - sofar.size();
+                      res.insert(pos, repl.data() + sofar.size(), nadded);
+                      pos += nadded;
+                      need_redraw = true;
+                    }
+                  }
+                }
+              } else if (x > 0) {
+                l = lin.at(x - 1, y);
+                if (! l.empty() && l.back() != last && l.back()->expandable()) {
+                  last = l.back();
+                  if (last->is(scql::id_type::datacell))
+                    goto expand_datacell;
+                }
+              }
+            }
+            break;
           case input_sm::parsed::nl:
             // Translate for Unix systems.
             buf[wp - 1] = '\n';
