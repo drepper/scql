@@ -21,6 +21,17 @@ namespace scql::data {
   }
 
 
-  data_info data;
+  std::list<std::string> data_info::check(const std::string& pfx)
+  {
+    std::list<std::string> res;
+    for (auto[n,_] : known)
+      if (n.starts_with(pfx))
+        res.emplace_back(n);
+    return res;
+  }
+
+
+
+  data_info available;
 
 } // namespace scql::data

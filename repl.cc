@@ -24,6 +24,7 @@
 #include "scql.hh"
 #include "scql-tab.hh"
 #include "scql-scan.hh"
+#include "data.hh"
 
 using namespace std::literals;
 
@@ -488,6 +489,8 @@ namespace repl {
 
   const std::string color_ident = "\e[38;5;200m";
   const std::string color_datacell = "\e[38;5;100m";
+  const std::string color_datacell_incomplete = "\e[38;5;142m";
+  const std::string color_datacell_missing = "\e[38;5;0m\e[48;5;100m";
   const std::string color_codecell = "\e[38;5;130m";
   const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
@@ -505,6 +508,7 @@ namespace repl {
       auto l = lin.at(x, y);
 
       if (! l.empty() && last != l.back()) {
+        std::string s;
         switch (l.back()->id) {
         case scql::id_type::ident:
           if (l.size() > 1 && l[l.size() - 2]->id == scql::id_type::fcall)
@@ -514,8 +518,18 @@ namespace repl {
           last = l.back();
           break;
         case scql::id_type::datacell:
-          tr += color_datacell;
           last = l.back();
+          {
+            auto d = scql::as<scql::datacell>(last);
+            if (auto av = scql::data::available.check(d->val); av.empty())
+              tr += color_datacell_missing;
+            else {
+              if (std::ranges::find(av, d->val) != av.end())
+                tr += color_datacell;
+              else
+                tr += color_datacell_incomplete;
+            }
+          }
           break;
         case scql::id_type::codecell:
           tr += color_codecell;

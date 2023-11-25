@@ -35,7 +35,7 @@ namespace scql::data {
   struct data_info {
     data_info();
 
-    std::list<std::string> avail(const std::string& pfx);
+    std::list<std::string> check(const std::string& pfx);
 
     void add(const std::string& name, schema s);
 
@@ -43,7 +43,7 @@ namespace scql::data {
     std::list<std::tuple<std::string,schema>> known;
   };
 
-  extern data_info data;
+  extern data_info available;
 
 } // namespace scql::data
 
