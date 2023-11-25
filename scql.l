@@ -72,6 +72,12 @@ ident                   [[:alpha:]][[:alnum:]_]*
 
 {ident}                 { *yylval = scql::ident::alloc(yytext, yyleng, *yylloc); return scqlIDENT; }
 
+"$"{ident}?             { *yylval = scql::datacell::alloc(yytext, yyleng, *yylloc); return scqlATOM; }
+
+"$@"{ident}?            { *yylval = scql::computecell::alloc(yytext, yyleng, *yylloc); return scqlATOM; }
+
+"@"{ident}?             { *yylval = scql::codecell::alloc(yytext, yyleng, *yylloc); return scqlCODECELL; }
+
 {string}                { *yylval = scql::string::alloc(yytext, yyleng, *yylloc); return scqlATOM; }
 
 {incompletestring}      { auto s = scql::string::alloc(yytext, yyleng, *yylloc); s->missing_close = true; *yylval = std::move(s); return scqlATOM; }

@@ -29,16 +29,14 @@ extern void yyerror(const YYLTYPE* l, const char* s);
 
 
 %token ATOM
+%token CODECELL
 %token IDENT
 %token END
 
 
 %%
 
-start:            ATOM END {
-                    scql::result = std::move($1);
-                  }
-                | pipeline END {
+start:            pipeline END {
                     scql::result = std::move($1);
                   }
                 ;
@@ -89,10 +87,17 @@ pipeline_list:    stage {
 stage:            %empty {
                     $$ = nullptr;
                   }
+                | ATOM {
+                    $$ = std::move($1);
+                  }
                 | IDENT {
                     $$ = std::move($1);
                   }
-                | IDENT '[' arglist_opt ']' {
+                | CODECELL {
+                    scql::as<scql::codecell>($1)->missing_brackets = true;
+                    $$ = std::move($1);
+                  }
+                | fname '[' arglist_opt ']' {
                     auto lloc = yylloc;
                     lloc.first_line = $1->lloc.first_line;
                     lloc.first_column = $1->lloc.first_column;
@@ -102,18 +107,26 @@ stage:            %empty {
                     }
                     $$ = scql::fcall::alloc(std::move($1), std::move($3), lloc);
                   }
-                | IDENT '[' arglist error {
+                | fname '[' arglist error {
                     auto n = scql::fcall::alloc(std::move($1), std::move($3), yylloc);
                     n->missing_close = true;
                     $$ = std::move(n);
                   }
-                | IDENT '[' error {
+                | fname '[' error {
                     auto n = scql::fcall::alloc(std::move($1), nullptr, yylloc);
                     n->missing_close = true;
                     $$ = std::move(n);
                   }
                 | '(' pipeline ')' {
                     $$ = std::move($2);
+                  }
+                ;
+
+fname:            CODECELL {
+                    $$ = std::move($1);
+                  }
+                | IDENT {
+                    $$ = std::move($1);
                   }
                 ;
 

@@ -20,6 +20,9 @@ namespace scql {
     string,
     list,
     pipeline,
+    datacell,
+    codecell,
+    computecell,
     ident,
     fcall,
   };
@@ -176,6 +179,50 @@ namespace scql {
     bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     std::string val;
+
+  protected:
+    ident(id_type id_, const std::string& v, const location& lloc_) : part(id_, lloc_), val(v) { }
+  };
+
+
+  struct datacell final : public ident {
+    datacell(const std::string& v, const location& lloc_) : ident(id_type::datacell, v, lloc_) { }
+    datacell(std::string&& v, const location& lloc_) : ident(id_type::datacell, std::move(v), lloc_) { }
+    ~datacell() override = default;
+
+    static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<datacell>(v, lloc_); }
+    static auto alloc(std::string&& v, const location& lloc_) { return std::make_unique<datacell>(std::move(v), lloc_); }
+    static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<datacell>(std::string(s, l), lloc_); }
+
+    std::string format() const override;
+  };
+
+
+  struct codecell final : ident {
+    codecell(const std::string& v, const location& lloc_) : ident(id_type::codecell, v, lloc_) { }
+    codecell(std::string&& v, const location& lloc_) : ident(id_type::codecell, std::move(v), lloc_) { }
+    ~codecell() override = default;
+
+    static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<codecell>(v, lloc_); }
+    static auto alloc(std::string&& v, const location& lloc_) { return std::make_unique<codecell>(std::move(v), lloc_); }
+    static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<codecell>(std::string(s, l), lloc_); }
+
+    std::string format() const override;
+
+    bool missing_brackets = false;
+  };
+
+
+  struct computecell final : ident {
+    computecell(const std::string& v, const location& lloc_) : ident(id_type::computecell, v, lloc_) { }
+    computecell(std::string&& v, const location& lloc_) : ident(id_type::computecell, std::move(v), lloc_) { }
+    ~computecell() override = default;
+
+    static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<computecell>(v, lloc_); }
+    static auto alloc(std::string&& v, const location& lloc_) { return std::make_unique<computecell>(std::move(v), lloc_); }
+    static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<computecell>(std::string(s, l), lloc_); }
+
+    std::string format() const override;
   };
 
 

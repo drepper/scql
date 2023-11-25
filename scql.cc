@@ -141,6 +141,24 @@ namespace scql {
   }
 
 
+  std::string datacell::format() const
+  {
+    return std::format("{{datacell{}}}", lloc.format());
+  }
+
+
+  std::string codecell::format() const
+  {
+    return std::format("{{codecell{}}}", lloc.format());
+  }
+
+
+  std::string computecell::format() const
+  {
+    return std::format("{{computecell{}}}", lloc.format());
+  }
+
+
   std::string fcall::format() const
   {
     return std::format("{{fcall{} {} [{}]}}", lloc.format(), fname ? fname->format() : "<UNKNOWN>"s, args ? args->format() : ""s);

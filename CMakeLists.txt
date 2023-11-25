@@ -4,7 +4,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-project(mockup VERSION 0.0 HOMEPAGE_URL "https://github.com/drepper/scql" LANGUAGES C CXX)
+project(mockup VERSION 0.0 HOMEPAGE_URL "https://github.com/drepper/scql" LANGUAGES C CXX ASM)
 
 # We cannot use -D_FORTIFY_SOURCE=2 for the debug build without enabling optimizations.
 set(debug_opts "-Og -g -fvar-tracking -fvar-tracking-assignments -D_GLIBCXX_DEBUG -DYYDEBUG=1 -D_FORTIFY_SOURCE=2")
@@ -48,4 +48,11 @@ cmake_policy(SET CMP0098 NEW)
 set_source_files_properties(scql-tab.cc PROPERTIES COMPILE_FLAGS "-Wno-redundant-decls -Wno-free-nonheap-object")
 set_source_files_properties(scql-scan.cc PROPERTIES COMPILE_FLAGS "-Wno-useless-cast -Wno-sign-compare -Wno-redundant-decls")
 
-add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS} linear.cc)
+add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS} linear.cc mnist.S iris.S data.cc data.hh)
+
+set_property(SOURCE mnist.S APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
+set_property(SOURCE iris.S APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
+
+set_source_files_properties(mnist.S APPEND PROPERTY OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/mnist-images-ubyte;${CMAKE_CURRENT_BINARY_DIR}/mnist-labels-ubyte")
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mnist-images-ubyte COMMAND xzcat ${CMAKE_CURRENT_SOURCE_DIR}/mnist-images-ubyte.xz > ${CMAKE_CURRENT_BINARY_DIR}/mnist-images-ubyte DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mnist-images-ubyte.xz)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mnist-labels-ubyte COMMAND xzcat ${CMAKE_CURRENT_SOURCE_DIR}/mnist-labels-ubyte.xz > ${CMAKE_CURRENT_BINARY_DIR}/mnist-labels-ubyte DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mnist-labels-ubyte.xz)

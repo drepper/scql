@@ -487,6 +487,9 @@ namespace repl {
 
 
   const std::string color_ident = "\e[38;5;200m";
+  const std::string color_datacell = "\e[38;5;100m";
+  const std::string color_codecell = "\e[38;5;130m";
+  const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
   const std::string color_integer = "\e[38;5;118m";
   const std::string color_floatnum = "\e[38;5;33m";
@@ -508,6 +511,18 @@ namespace repl {
             tr += color_fname;
           else
             tr += color_ident;
+          last = l.back();
+          break;
+        case scql::id_type::datacell:
+          tr += color_datacell;
+          last = l.back();
+          break;
+        case scql::id_type::codecell:
+          tr += color_codecell;
+          last = l.back();
+          break;
+        case scql::id_type::computecell:
+          tr += color_computecell;
           last = l.back();
           break;
         case scql::id_type::integer:
