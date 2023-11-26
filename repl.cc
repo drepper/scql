@@ -502,6 +502,8 @@ namespace repl {
   const std::string color_fname = "\e[38;5;208m";
   const std::string color_integer = "\e[38;5;118m";
   const std::string color_floatnum = "\e[38;5;33m";
+  const std::string color_help = "\e[38;5;250m";
+  const std::string color_help_frame[2] = { "\e[38;5;230m", "\e[38;5;196m" };
   const std::string color_off = "\e[0m";
 
   void redraw_all(scql::linear& lin)
@@ -1042,42 +1044,54 @@ namespace repl {
               auto ly = help_loc.first_line + 1;
               goto_xy(input_start_col + lx, input_start_row + ly);
               if (lx < mid_col) {
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[0], strlen(boxchars[0]));
                 ++lx;
                 while (lx < mid_col) {
+                  nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                   nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
                   ++lx;
                 }
               }
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[2], strlen(boxchars[2]));
               ++lx;
               if (lx < help_loc.last_column) {
                 while (lx + 1 < help_loc.last_column) {
+                  nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                   nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
                   ++lx;
                 }
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[3], strlen(boxchars[3]));
               }
               ++ly;
 
               goto_xy(input_start_col + mid_col, input_start_row + ly);
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[4], strlen(boxchars[4]));
               ++ly;
 
               int start_box = std::max(0, input_start_col + mid_col - max_row_len / 2 - 2);
               goto_xy(start_box, input_start_row + ly);
+              lx = start_box;
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[5], strlen(boxchars[5]));
-              lx = start_box + 1;
+              lx += 1;
               while (lx < input_start_col + mid_col) {
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[7], strlen(boxchars[7]));
               ++lx;
               while (lx < start_box + max_row_len + 3) {
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[8], strlen(boxchars[8]));
               ++ly;
 
@@ -1088,25 +1102,35 @@ namespace repl {
                   off = help.size();
 
                 goto_xy(start_box, input_start_row + ly);
+                lx = start_box;
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
+                nn = ::write(STDOUT_FILENO, color_help.data(), std::size(color_help));
                 nn = ::write(STDOUT_FILENO, " ", 1);
                 nn = ::write(STDOUT_FILENO, help.data() + last_off, off - last_off);
                 goto_xy(start_box + 3 + max_row_len, input_start_row + ly);
+                lx = start_box + 3 + max_row_len;
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
 
                 ++ly;
                 last_off = off + 1;
               } while (last_off < help.size());
 
+              lx = start_box;
               goto_xy(start_box, input_start_row + ly);
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[10], strlen(boxchars[10]));
-              lx = start_box + 1;
+              lx += 1;
               while (lx < start_box + max_row_len + 3) {
+                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
+              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[11], strlen(boxchars[11]));
             }
+            nn = ::write(STDOUT_FILENO, color_off.data(), std::size(color_off));
 
             debug(s);
           }
