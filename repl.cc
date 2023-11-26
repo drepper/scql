@@ -8,7 +8,6 @@
 #include <format>
 #include <locale>
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -490,6 +489,13 @@ namespace repl {
     }
 
     auto n [[maybe_unused]] = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
+  }
+
+
+  void su_n(size_t n)
+  {
+    auto s = std::format("\e[{}S", n);
+    auto nn [[maybe_unused]] = ::write(STDOUT_FILENO, s.data(), s.size());
   }
 
 
@@ -1027,15 +1033,16 @@ namespace repl {
               //       ╚═════════════════════╝
               // This means we need 4 rows plus whatever is needed for the help text below the line
               // with the highlighted text.
-              const char* boxchars[] {
+              static std::array boxchars {
                 "└", "─", "▲", "┘", "│", "╔", "═", "╧", "╗", "║", "╚", "╝"
               };
+
               auto needed_end_y = std::max(input_start_row + help_loc.last_line + 4, end_y + 2) + help_nrows;
-              while (needed_end_y >= size_t(cur_height)) {
-                nn = ::write(STDOUT_FILENO, su, sizeof(su));
-                input_start_row -= 1;
-                end_y -= 1;
-                needed_end_y -= 1;
+              if (needed_end_y >= size_t(cur_height)) {
+                size_t adj = 1 + (needed_end_y - size_t(cur_height));
+                su_n(adj);
+                input_start_row -= adj;
+                end_y -= adj;
               }
 
               // XYZ This does not work when the highlighted item spans multiple rows.
