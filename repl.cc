@@ -37,6 +37,7 @@ namespace repl {
     const char dsr[] { '\e', '[', '6', 'n' };
     const char el0[] { '\e', '[', '0', 'K' };
     const char el0nl[] { '\e', '[', '0', 'K', '\n' };
+    const char ed0[] { '\e', '[', '0', 'J' };
     const char su[] { '\e', '[', '1', 'S' };
 
     const char quit_cmd[] = "quit";
@@ -475,6 +476,7 @@ namespace repl {
   void redisplay(std::string& s)
   {
     size_t p = 0;
+    size_t r = input_start_row;
     while (p < s.size()) {
       auto end = s.find('\n', p);
       auto here = (end == std::string::npos ? s.size() : end) - p;
@@ -484,9 +486,10 @@ namespace repl {
       n = ::write(STDOUT_FILENO, el0nl, sizeof(el0nl));
       p += here + 1;
       for (int j = 0; j < input_start_col; ++j)
-        n = ::write(STDOUT_FILENO, " ", 1);
+      ++r;
     }
-    auto n [[maybe_unused]] = ::write(STDOUT_FILENO, el0, sizeof(el0));
+
+    auto n [[maybe_unused]] = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
   }
 
 
@@ -501,20 +504,20 @@ namespace repl {
   const std::string color_floatnum = "\e[38;5;33m";
   const std::string color_off = "\e[0m";
 
-  void redraw_all(const scql::linear& lin)
+  void redraw_all(scql::linear& lin)
   {
     std::string tr;
 
-    scql::part::cptr_type last = nullptr;
+    scql::linear::item* last = nullptr;
     for (size_t p = 0; p < res.size(); ++p) {
       auto[x, y] = string_coords(p);
       auto l = lin.at(x, y);
 
       if (! l.empty() && last != l.back()) {
         std::string s;
-        switch (l.back()->id) {
+        switch (l.back()->p->id) {
         case scql::id_type::ident:
-          if (l.size() > 1 && l[l.size() - 2]->id == scql::id_type::fcall)
+          if (l.size() > 1 && l[l.size() - 2]->p->id == scql::id_type::fcall)
             tr += color_fname;
           else
             tr += color_ident;
@@ -523,7 +526,7 @@ namespace repl {
         case scql::id_type::datacell:
           last = l.back();
           {
-            auto d = scql::as<scql::datacell>(last);
+            auto d = scql::as<scql::datacell>(last->p);
             if (auto av = scql::data::available.check(d->val); av.empty())
               tr += color_datacell_missing;
             else {
@@ -656,6 +659,8 @@ namespace repl {
     input_reset();
 
     scql::linear lin;
+    std::string help;
+    scql::location help_loc { -1, -1, -1, -1 };
 
     while (true) {
       epoll_event evs[1];
@@ -681,6 +686,7 @@ namespace repl {
           case input_sm::parsed::eol:
             pos = res.size();
             move();
+            nn = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
             goto out;
           case input_sm::parsed::tab:
             if (! lin.empty()) {
@@ -688,13 +694,13 @@ namespace repl {
               std::string sofar;
               auto[x, y] = string_coords(pos);
               auto l = lin.at(x, y);
-              scql::part::cptr_type last = nullptr;
+              scql::linear::item* last = nullptr;
               if (! l.empty()) {
                 last = l.back();
-                if (last->expandable()) {
-                  if (last->is(scql::id_type::datacell)) {
+                if (last->p->expandable()) {
+                  if (last->p->is(scql::id_type::datacell)) {
                   expand_datacell:
-                    auto d = scql::as<scql::datacell>(last);
+                    auto d = scql::as<scql::datacell>(last->p);
                     sofar = d->val;
                     matches = scql::data::available.check(sofar);
                   }
@@ -723,9 +729,9 @@ namespace repl {
                 }
               } else if (x > 0) {
                 l = lin.at(x - 1, y);
-                if (! l.empty() && l.back() != last && l.back()->expandable()) {
+                if (! l.empty() && l.back() != last && l.back()->p->expandable()) {
                   last = l.back();
-                  if (last->is(scql::id_type::datacell))
+                  if (last->p->is(scql::id_type::datacell))
                     goto expand_datacell;
                 }
               }
@@ -965,16 +971,141 @@ namespace repl {
         }
 
         if (moved) {
+          help.clear();
+
           if (lin.items.empty())
             debug(""s);
           else {
             auto[x, y] = string_coords(pos);
+            auto ctx = lin.at(x, y);
 
             std::string s;
-            for (auto& e : lin.at(x, y)) {
+            for (auto& e : ctx) {
               if (! s.empty())
                 s += '\n';
-              s += e->format();
+              s += e->p->format();
+            }
+
+            if (! ctx.empty()) {
+              scql::linear::item* last = ctx.back();
+              if (last->p->is(scql::id_type::datacell)) {
+                auto d = scql::as<scql::datacell>(last->p);
+                if (auto av = scql::data::available.check(d->val); av.size() == 1 && av[0] == d->val) {
+                  auto& sch = scql::data::available.get(d->val);
+                  help = sch.title;
+                  help_loc = d->lloc;
+                }
+              }
+            }
+
+            if (help.empty()) {
+              move(res.size());
+              nn = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
+              move();
+            } else {
+              size_t help_nrows = 1;
+              std::string::size_type last_off = 0;
+              auto off = help.find('\n', 0);
+              int max_row_len = 0;
+              while (off != std::string::npos) {
+                ++help_nrows;
+                max_row_len = std::max(max_row_len, int(off - last_off));
+                last_off = off + 1;
+                off = help.find('\n', last_off);
+              }
+              max_row_len = std::max(max_row_len, int(help.size() - last_off));
+              auto[end_x, end_y] = coords(res.size());
+              // We draw something like this:
+              //
+              //     foo | bar[42, baz] | xyzzy
+              //           └─────▲────┘
+              //                 │
+              //       ╔═════════╧═══════════╗
+              //       ║ This is a help text ║
+              //       ╚═════════════════════╝
+              // This means we need 4 rows plus whatever is needed for the help text below the line
+              // with the highlighted text.
+              const char* boxchars[] {
+                "└", "─", "▲", "┘", "│", "╔", "═", "╧", "╗", "║", "╚", "╝"
+              };
+              auto needed_end_y = std::max(input_start_row + help_loc.last_line + 4, end_y + 2) + help_nrows;
+              while (needed_end_y >= size_t(cur_height)) {
+                nn = ::write(STDOUT_FILENO, su, sizeof(su));
+                input_start_row -= 1;
+                end_y -= 1;
+                needed_end_y -= 1;
+              }
+
+              // XYZ This does not work when the highlighted item spans multiple rows.
+              auto mid_col = (help_loc.first_column + help_loc.last_column) / 2;
+              auto lx = help_loc.first_column;
+              auto ly = help_loc.first_line + 1;
+              goto_xy(input_start_col + lx, input_start_row + ly);
+              if (lx < mid_col) {
+                nn = ::write(STDOUT_FILENO, boxchars[0], strlen(boxchars[0]));
+                ++lx;
+                while (lx < mid_col) {
+                  nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
+                  ++lx;
+                }
+              }
+              nn = ::write(STDOUT_FILENO, boxchars[2], strlen(boxchars[2]));
+              ++lx;
+              if (lx < help_loc.last_column) {
+                while (lx + 1 < help_loc.last_column) {
+                  nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
+                  ++lx;
+                }
+                nn = ::write(STDOUT_FILENO, boxchars[3], strlen(boxchars[3]));
+              }
+              ++ly;
+
+              goto_xy(input_start_col + mid_col, input_start_row + ly);
+              nn = ::write(STDOUT_FILENO, boxchars[4], strlen(boxchars[4]));
+              ++ly;
+
+              int start_box = std::max(0, input_start_col + mid_col - max_row_len / 2 - 2);
+              goto_xy(start_box, input_start_row + ly);
+              nn = ::write(STDOUT_FILENO, boxchars[5], strlen(boxchars[5]));
+              lx = start_box + 1;
+              while (lx < input_start_col + mid_col) {
+                nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
+                ++lx;
+              }
+              nn = ::write(STDOUT_FILENO, boxchars[7], strlen(boxchars[7]));
+              ++lx;
+              while (lx < start_box + max_row_len + 3) {
+                nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
+                ++lx;
+              }
+              nn = ::write(STDOUT_FILENO, boxchars[8], strlen(boxchars[8]));
+              ++ly;
+
+              last_off = 0;
+              do {
+                off = help.find('\n', last_off);
+                if (off == std::string::npos)
+                  off = help.size();
+
+                goto_xy(start_box, input_start_row + ly);
+                nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
+                nn = ::write(STDOUT_FILENO, " ", 1);
+                nn = ::write(STDOUT_FILENO, help.data() + last_off, off - last_off);
+                goto_xy(start_box + 3 + max_row_len, input_start_row + ly);
+                nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
+
+                ++ly;
+                last_off = off + 1;
+              } while (last_off < help.size());
+
+              goto_xy(start_box, input_start_row + ly);
+              nn = ::write(STDOUT_FILENO, boxchars[10], strlen(boxchars[10]));
+              lx = start_box + 1;
+              while (lx < start_box + max_row_len + 3) {
+                nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
+                ++lx;
+              }
+              nn = ::write(STDOUT_FILENO, boxchars[11], strlen(boxchars[11]));
             }
 
             debug(s);

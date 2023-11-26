@@ -9,14 +9,14 @@ namespace scql {
   }
 
 
-  std::vector<part::cptr_type> linear::at(int x, int y) const
+  std::vector<linear::item*> linear::at(int x, int y)
   {
-    std::vector<part::cptr_type> res;
+    std::vector<item*> res;
 
-    for (auto& e : items)
-      if (((e.p->lloc.first_line == y && e.p->lloc.first_column <= x) || e.p->lloc.first_line < y)
-          && ((e.p->lloc.last_line == y && e.p->lloc.last_column > x) || e.p->lloc.last_line > y))
-        res.emplace_back(e.p);
+    for (size_t i = 0; i < items.size(); ++i)
+      if (((items[i].p->lloc.first_line == y && items[i].p->lloc.first_column <= x) || items[i].p->lloc.first_line < y)
+          && ((items[i].p->lloc.last_line == y && items[i].p->lloc.last_column > x) || items[i].p->lloc.last_line > y))
+        res.emplace_back(&items[i]);
 
     return res;
   }

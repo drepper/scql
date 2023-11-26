@@ -271,7 +271,7 @@ namespace scql {
     const auto& back() const { return items.back(); }
     auto& back() { return items.back(); }
 
-    std::vector<part::cptr_type> at(int x, int y) const;
+    std::vector<item*> at(int x, int y);
 
     std::vector<item> items { };
   };

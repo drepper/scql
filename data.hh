@@ -26,6 +26,7 @@ namespace scql::data {
       std::string label;
     };
 
+    std::string title;
     std::vector<dimen> info;
     size_t cnt;
     void* data;
@@ -36,6 +37,9 @@ namespace scql::data {
     data_info();
 
     std::vector<std::string> check(const std::string& pfx);
+
+    const schema& get(const std::string& s) const;
+    schema& get(const std::string& s);
 
     void add(const std::string& name, schema s);
 
