@@ -987,6 +987,9 @@ namespace repl {
             auto[x, y] = string_coords(pos);
             auto ctx = lin.at(x, y);
 
+            if (ctx.empty() && x > 1)
+              ctx = lin.at(x - 1, y);
+
             std::string s;
             for (auto& e : ctx) {
               if (! s.empty())
