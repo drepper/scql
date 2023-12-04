@@ -20,16 +20,18 @@ namespace scql::data {
 
   // Scheme representation.
   struct schema {
-    struct dimen {
+    struct column {
       data_type type;
       size_t size;
       std::string label;
     };
 
     std::string title;
-    std::vector<dimen> info;
-    size_t cnt;
+    std::vector<column> columns;
+    std::vector<size_t> dimens;
     void* data;
+
+    operator std::string() const;
   };
 
   // Available data cells.

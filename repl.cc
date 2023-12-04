@@ -1000,7 +1000,7 @@ namespace repl {
                 auto d = scql::as<scql::datacell>(last->p);
                 if (auto av = scql::data::available.check(d->val); av.size() == 1 && av[0] == d->val) {
                   auto& sch = scql::data::available.get(d->val);
-                  help = sch.title;
+                  help = std::string(sch);
                   help_loc = d->lloc;
                 }
               }
