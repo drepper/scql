@@ -67,7 +67,7 @@ pipeline:         pipeline_list {
 pipeline_list:    stage {
                     $$ = std::move($1);
                   }
-                | stage ',' pipeline_list {
+                | stage ';' pipeline_list {
                     if ($3 && $3->is(scql::id_type::list)) {
                       scql::as<scql::list>($3)->prepend(std::move($1));
                       $3->lloc.first_line = $1->lloc.first_line;
@@ -145,6 +145,15 @@ arglist:          arg {
                     scql::as<scql::list>($3)->prepend(std::move($1));
                     $$ = std::move($3);
                   }
+                | error ',' arglist {
+                    scql::as<scql::list>($3)->prepend(nullptr);
+                    $$ = std::move($3);
+                  }
+                | arg ',' error {
+                    auto r = scql::list::alloc(std::move($1), yylloc);
+                    r->add(nullptr);
+                    $$ = std::move(r);
+                  }
                 ;
 
 arg:              ATOM {
@@ -152,6 +161,9 @@ arg:              ATOM {
                   }
                 | IDENT {
                     $$ = std::move($1);
+                  }
+                | '*' {
+                    $$ = scql::glob::alloc(yyloc);
                   }
                 ;
 

@@ -119,6 +119,18 @@ namespace scql {
   }
 
 
+  std::string glob::format() const
+  {
+    return std::format("{{glob{}}}", lloc.format());
+  }
+
+
+  bool glob::fixup(std::string&, size_t, int, int) const
+  {
+    return false;
+  }
+
+
   std::string string::format() const
   {
     return std::format("{{string{}}}", lloc.format());

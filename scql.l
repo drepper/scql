@@ -70,6 +70,8 @@ ident                   [[:alpha:]][[:alnum:]_]*
 
 ")"                     { return ')'; }
 
+"*"                     { return '*'; }
+
 {ident}                 { *yylval = scql::ident::alloc(yytext, yyleng, *yylloc); return scqlIDENT; }
 
 "$"{ident}?             { *yylval = scql::datacell::alloc(yytext + 1, yyleng - 1, *yylloc); return scqlATOM; }

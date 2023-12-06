@@ -17,6 +17,7 @@ namespace scql {
   enum struct id_type {
     integer,
     floatnum,
+    glob,
     string,
     list,
     pipeline,
@@ -140,6 +141,20 @@ namespace scql {
     bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     float_type val;
+  };
+
+
+  struct glob : part {
+    using cptr_type = std::shared_ptr<glob>;
+
+    glob(const location& lloc_) : part(id_type::glob, lloc_) { }
+    ~glob() override = default;
+
+    static auto alloc(const location& lloc_) { return std::make_unique<glob>(lloc_); }
+
+    std::string format() const override;
+
+    bool fixup(std::string& s, size_t p, int x, int y) const override;
   };
 
 
