@@ -97,7 +97,7 @@ stage:            %empty {
                     scql::as<scql::codecell>($1)->missing_brackets = true;
                     $$ = std::move($1);
                   }
-                | fname '[' arglist_opt ']' {
+                | fname '[' arglist ']' {
                     auto lloc = yylloc;
                     lloc.first_line = $1->lloc.first_line;
                     lloc.first_column = $1->lloc.first_column;
@@ -106,11 +106,6 @@ stage:            %empty {
                       $3->lloc.first_column = $1->lloc.last_column;
                     }
                     $$ = scql::fcall::alloc(std::move($1), std::move($3), lloc);
-                  }
-                | fname '[' arglist error {
-                    auto n = scql::fcall::alloc(std::move($1), std::move($3), yylloc);
-                    n->missing_close = true;
-                    $$ = std::move(n);
                   }
                 | fname '[' error {
                     auto n = scql::fcall::alloc(std::move($1), nullptr, yylloc);
@@ -126,14 +121,6 @@ fname:            CODECELL {
                     $$ = std::move($1);
                   }
                 | IDENT {
-                    $$ = std::move($1);
-                  }
-                ;
-
-arglist_opt:      %empty {
-                    $$ = nullptr;
-                  }
-                | arglist {
                     $$ = std::move($1);
                   }
                 ;
@@ -164,6 +151,9 @@ arg:              ATOM {
                   }
                 | '*' {
                     $$ = scql::glob::alloc(yyloc);
+                  }
+                | %empty {
+                    $$ = nullptr;
                   }
                 ;
 
