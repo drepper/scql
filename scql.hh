@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "data.hh"
+
 // XYZ Debugging
 // #include <iostream>
 
@@ -206,6 +208,8 @@ namespace scql {
   struct datacell final : public ident {
     datacell(const std::string& v, const location& lloc_) : ident(id_type::datacell, v, lloc_) { }
     datacell(std::string&& v, const location& lloc_) : ident(id_type::datacell, std::move(v), lloc_) { }
+    datacell(const datacell&) = delete;
+    datacell operator=(const datacell&) = delete;
     ~datacell() override = default;
 
     static auto alloc(const std::string& v, const location& lloc_) { return std::make_unique<datacell>(v, lloc_); }
@@ -213,6 +217,8 @@ namespace scql {
     static auto alloc(const char*s, size_t l, const location& lloc_) { return std::make_unique<datacell>(std::string(s, l), lloc_); }
 
     std::string format() const override;
+
+    data::schema* schema = nullptr;
   };
 
 
@@ -247,9 +253,11 @@ namespace scql {
   struct fcall : part {
     using cptr_type = std::shared_ptr<fcall>;
 
+    fcall(part::cptr_type&& fname_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args(nullptr) { }
     fcall(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args(std::move(args_)) { }
     ~fcall() override = default;
 
+    static auto alloc(part::cptr_type&& fname_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), lloc_); }
     static auto alloc(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(args_), lloc_); }
 
     part::cptr_type fname;
@@ -260,6 +268,8 @@ namespace scql {
     bool fixup(std::string& s, size_t p, int x, int y) const override;
 
     void prefix_map(std::function<void(part::cptr_type)> fct) override;
+
+    data::schema schema {};
 
     bool missing_close = false;
   };

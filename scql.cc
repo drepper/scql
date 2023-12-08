@@ -207,12 +207,10 @@ namespace scql {
 
   void annotate(part::cptr_type& p)
   {
-    switch (p->id) {
-    case id_type::pipeline:
-      break;
-    default:
-      break;
-    }
+    if (p->id != id_type::pipeline)
+      return;
+
+    auto pl = as<pipeline>(p);
   }
 
 
