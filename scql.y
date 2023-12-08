@@ -42,22 +42,15 @@ start:            pipeline END {
                 ;
 
 pipeline:         pipeline_list {
-                    $$ = std::move($1);
+                    $$ = scql::pipeline::alloc(std::move($1), yylloc);
                   }
                 | pipeline_list '|' pipeline {
-                    if ($3 && $3->is(scql::id_type::pipeline)) {
-                      scql::as<scql::pipeline>($3)->prepend(std::move($1));
+                    if ($1) {
                       $3->lloc.first_line = $1->lloc.first_line;
                       $3->lloc.first_column = $1->lloc.first_column;
-                      $$ = std::move($3);
-                    } else {
-                      auto lloc = $1->lloc;
-                      if ($3) {
-                        lloc.last_line = $3->lloc.last_line;
-                        lloc.last_column = $3->lloc.last_column;
-                      }
-                      $$ = scql::pipeline::alloc(std::move($1), std::move($3), lloc);
                     }
+                    scql::as<scql::pipeline>($3)->prepend(std::move($1));
+                    $$ = std::move($3);
                   }
                 | pipeline_list '|' error {
                     $$ = scql::pipeline::alloc(std::move($1), nullptr, $1 ? $1->lloc : yylloc);
@@ -65,22 +58,15 @@ pipeline:         pipeline_list {
                 ;
 
 pipeline_list:    stage {
-                    $$ = std::move($1);
+                    $$ = scql::list::alloc(std::move($1), yylloc);
                   }
                 | stage ';' pipeline_list {
-                    if ($3 && $3->is(scql::id_type::list)) {
-                      scql::as<scql::list>($3)->prepend(std::move($1));
+                    if ($1) {
                       $3->lloc.first_line = $1->lloc.first_line;
                       $3->lloc.first_column = $1->lloc.first_column;
-                      $$ = std::move($3);
-                    } else {
-                      auto lloc = $1 ? $1->lloc : yylloc;
-                      if ($3) {
-                        lloc.last_line = $3->lloc.last_line;
-                        lloc.last_column = $3->lloc.last_column;
-                      }
-                      $$ = scql::list::alloc(std::move($1), std::move($3), lloc);
                     }
+                    scql::as<scql::list>($3)->prepend(std::move($1));
+                    $$ = std::move($3);
                   }
                 ;
 

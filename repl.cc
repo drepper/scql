@@ -1,5 +1,6 @@
 #define _GNU_SOURCE 1
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <charconv>
@@ -967,9 +968,11 @@ namespace repl {
             break;
           }
 
-          if (scql::result)
+          if (scql::result) {
+            annotate(scql::result);
+
             lin = scql::linear(scql::result);
-          else
+          } else
             lin = scql::linear();
 
           redraw_all(lin);

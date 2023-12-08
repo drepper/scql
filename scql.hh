@@ -93,11 +93,13 @@ namespace scql {
   struct pipeline : part {
     using cptr_type = std::shared_ptr<pipeline>;
 
+    pipeline(part::cptr_type&& p, const location& lloc_) : part(id_type::pipeline, lloc_), l() { l.emplace_back(std::move(p)); }
     pipeline(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::pipeline, lloc_), l() { l.emplace_back(std::move(p1)); l.emplace_back(std::move(p2)); }
     ~pipeline() override = default;
 
     void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
 
+    static auto alloc(part::cptr_type&& p, const location& lloc_) { return std::make_unique<pipeline>(std::move(p), lloc_); }
     static auto alloc(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) { return std::make_unique<pipeline>(std::move(p1), std::move(p2), lloc_); }
 
     std::string format() const override;
@@ -268,6 +270,9 @@ namespace scql {
   {
     return std::static_pointer_cast<T>(p);
   }
+
+
+  void annotate(part::cptr_type& p);
 
 
   using yyscan_t = void*;

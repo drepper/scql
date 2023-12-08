@@ -204,4 +204,16 @@ namespace scql {
 
   part::cptr_type result;
 
+
+  void annotate(part::cptr_type& p)
+  {
+    switch (p->id) {
+    case id_type::pipeline:
+      break;
+    default:
+      break;
+    }
+  }
+
+
 } // namespace scql
