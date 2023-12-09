@@ -1,5 +1,7 @@
 #include "scql.hh"
 
+#include <cassert>
+
 using namespace std::literals;
 
 
@@ -25,7 +27,7 @@ namespace scql {
 
   std::string list::format() const
   {
-    auto s = std::format("{{list{} ", lloc.format());
+    auto s = std::format("{{{}{} ", name, lloc.format());
     bool first = true;
     for (const auto& e : l) {
       if (! first)
@@ -179,7 +181,15 @@ namespace scql {
 
   std::string fcall::format() const
   {
-    return std::format("{{fcall{} {} [{}]}}", lloc.format(), fname ? fname->format() : "<UNKNOWN>"s, args ? args->format() : ""s);
+    auto res = std::format("{{fcall{} {} [", lloc.format(), fname ? fname->format() : "<UNKNOWN>"s);
+
+    bool first = true;
+    for (const auto& e : args) {
+      std::format_to(std::back_inserter(res), "{}{}", (first ? "" : ", "), e ? e->format() : "UNKNOWN"s);
+      first = false;
+    }
+    res += "]}";
+    return res;
   }
 
 
@@ -197,8 +207,8 @@ namespace scql {
   {
     fct(shared_from_this());
     fct(fname);
-    if (args)
-      args->prefix_map(fct);
+    for (const auto& e : args)
+      e->prefix_map(fct);
   }
 
 
@@ -211,6 +221,8 @@ namespace scql {
       return;
 
     auto pl = as<pipeline>(p);
+    // First: recurse.  We need to know everything about nested pipelines first.
+    assert(pl->l[0]->is(id_type::statements));
   }
 
 

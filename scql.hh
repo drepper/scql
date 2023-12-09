@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "data.hh"
@@ -17,11 +18,13 @@
 namespace scql {
 
   enum struct id_type {
+    syntax,
     integer,
     floatnum,
     glob,
     string,
     list,
+    statements,
     pipeline,
     datacell,
     codecell,
@@ -67,6 +70,17 @@ namespace scql {
 #pragma GCC diagnostic pop
 
 
+  struct syntax : part
+  {
+    syntax(const location& lloc_) : part(id_type::syntax, lloc_) { }
+
+    static auto alloc(const location& lloc_) { return std::make_unique<syntax>(lloc_); }
+
+    std::string format() const override { std::unreachable(); }
+    bool fixup(std::string&, size_t, int, int) const override { std::unreachable(); }
+  };
+
+
   struct list : part {
     using cptr_type = std::shared_ptr<list>;
 
@@ -89,6 +103,18 @@ namespace scql {
     void prefix_map(std::function<void(part::cptr_type)> fct) override;
 
     std::vector<part::cptr_type> l;
+
+  protected:
+    list(id_type id_, part::cptr_type&& p, const location& lloc_) : part(id_, lloc_), l() { l.emplace_back(std::move(p)); }
+
+    std::string name = "list";
+  };
+
+
+  struct statements : list {
+    statements(part::cptr_type&& p, const location& lloc_) : list(id_type::statements, std::move(p), lloc_) { name = "statements"; }
+
+    static auto alloc(part::cptr_type&& p, const location& lloc_) { return std::make_unique<statements>(std::move(p), lloc_); }
   };
 
 
@@ -253,15 +279,19 @@ namespace scql {
   struct fcall : part {
     using cptr_type = std::shared_ptr<fcall>;
 
-    fcall(part::cptr_type&& fname_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args(nullptr) { }
-    fcall(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args(std::move(args_)) { }
+    fcall(part::cptr_type&& fname_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)) { }
+    fcall(part::cptr_type&& fname_, part::cptr_type&& arg_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg_)} { }
+    fcall(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg1_), std::move(arg2_)} { }
     ~fcall() override = default;
 
     static auto alloc(part::cptr_type&& fname_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), lloc_); }
-    static auto alloc(part::cptr_type&& fname_, part::cptr_type&& args_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(args_), lloc_); }
+    static auto alloc(part::cptr_type&& fname_, part::cptr_type&& arg_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(arg_), lloc_); }
+    static auto alloc(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(arg1_), std::move(arg2_), lloc_); }
+
+    void prepend(part::cptr_type&& p) { args.emplace(args.begin(), std::move(p)); }
 
     part::cptr_type fname;
-    part::cptr_type args;
+    std::vector<part::cptr_type> args {};
 
     std::string format() const override;
 

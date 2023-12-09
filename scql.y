@@ -42,7 +42,14 @@ start:            pipeline END {
                 ;
 
 pipeline:         pipeline_list {
-                    $$ = scql::pipeline::alloc(std::move($1), yylloc);
+                    auto lloc = yylloc;
+                    if ($1) {
+                      lloc.first_line = std::min(lloc.first_line, $1->lloc.first_line);
+                      lloc.first_column = std::min(lloc.first_column, $1->lloc.first_column);
+                      lloc.last_line = std::min(lloc.last_line, $1->lloc.last_line);
+                      lloc.last_column = std::min(lloc.last_column, $1->lloc.last_column);
+                    }
+                    $$ = scql::pipeline::alloc(std::move($1), lloc);
                   }
                 | pipeline_list '|' pipeline {
                     if ($1) {
@@ -58,14 +65,21 @@ pipeline:         pipeline_list {
                 ;
 
 pipeline_list:    stage {
-                    $$ = scql::list::alloc(std::move($1), yylloc);
+                    auto lloc = yylloc;
+                    if ($1) {
+                      lloc.first_line = std::min(lloc.first_line, $1->lloc.first_line);
+                      lloc.first_column = std::min(lloc.first_column, $1->lloc.first_column);
+                      lloc.last_line = std::min(lloc.last_line, $1->lloc.last_line);
+                      lloc.last_column = std::min(lloc.last_column, $1->lloc.last_column);
+                    }
+                    $$ = scql::statements::alloc(std::move($1), lloc);
                   }
                 | stage ';' pipeline_list {
                     if ($1) {
                       $3->lloc.first_line = $1->lloc.first_line;
                       $3->lloc.first_column = $1->lloc.first_column;
                     }
-                    scql::as<scql::list>($3)->prepend(std::move($1));
+                    scql::as<scql::statements>($3)->prepend(std::move($1));
                     $$ = std::move($3);
                   }
                 ;
@@ -90,14 +104,10 @@ stage:            %empty {
                     $$ = scql::fcall::alloc(std::move($1), lloc);
                   }
                 | fname '[' arglist ']' {
-                    auto lloc = yylloc;
-                    lloc.first_line = $1->lloc.first_line;
-                    lloc.first_column = $1->lloc.first_column;
-                    if ($3 != nullptr) {
-                      $3->lloc.first_line = $1->lloc.last_line;
-                      $3->lloc.first_column = $1->lloc.last_column;
-                    }
-                    $$ = scql::fcall::alloc(std::move($1), std::move($3), lloc);
+                    $3->lloc.first_line = $1->lloc.first_line;
+                    $3->lloc.first_column = $1->lloc.first_column;
+                    scql::as<scql::fcall>($3)->fname = std::move($1);
+                    $$ = std::move($3);
                   }
                 | fname '[' error {
                     auto n = scql::fcall::alloc(std::move($1), nullptr, yylloc);
@@ -105,6 +115,10 @@ stage:            %empty {
                     $$ = std::move(n);
                   }
                 | '(' pipeline ')' {
+                    $2->lloc.first_line = $1->lloc.first_line;
+                    $2->lloc.first_column = $1->lloc.first_column;
+                    $2->lloc.last_line = $3->lloc.last_line;
+                    $2->lloc.last_column = $3->lloc.last_column;
                     $$ = std::move($2);
                   }
                 ;
@@ -118,25 +132,28 @@ fname:            CODECELL {
                 ;
 
 arglist:          arg {
-                    $$ = scql::list::alloc(std::move($1), yylloc);
+                    $$ = scql::fcall::alloc(nullptr, std::move($1), yylloc);
                   }
                 | arg ',' arglist {
-                    scql::as<scql::list>($3)->prepend(std::move($1));
+                    $3->lloc.last_line = $1->lloc.first_line;
+                    $3->lloc.last_column = $1->lloc.first_column;
+                    scql::as<scql::fcall>($3)->prepend(std::move($1));
                     $$ = std::move($3);
                   }
                 | error ',' arglist {
-                    scql::as<scql::list>($3)->prepend(nullptr);
+                    $3->lloc.last_line = $2->lloc.first_line;
+                    $3->lloc.last_column = $2->lloc.first_column;
+                    scql::as<scql::fcall>($3)->prepend(nullptr);
                     $$ = std::move($3);
                   }
                 | arg ',' error {
-                    auto r = scql::list::alloc(std::move($1), yylloc);
-                    r->add(nullptr);
-                    $$ = std::move(r);
+                    auto lloc = $1->lloc;
+                    lloc.last_line = $2->lloc.last_line;
+                    lloc.last_column = $2->lloc.last_column;
+                    $$ = scql::fcall::alloc(nullptr, std::move($1), nullptr, lloc);
                   }
                 | error ',' error {
-                    auto r = scql::list::alloc(nullptr, yylloc);
-                    r->add(nullptr);
-                    $$ = std::move(r);
+                    $$ = scql::fcall::alloc(nullptr, $2->lloc);
                   }
                 ;
 

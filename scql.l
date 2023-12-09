@@ -58,19 +58,19 @@ ident                   [[:alpha:]][[:alnum:]_]*
 
 {float}                 { return parse_float(yytext, yyleng, yylval, yylloc); }
 
-"|"                     { return '|'; }
+"|"                     { *yylval = scql::syntax::alloc(*yylloc); return '|'; }
 
-","                     { return ','; }
+","                     { *yylval = scql::syntax::alloc(*yylloc); return ','; }
 
-"["                     { return '['; }
+"["                     { *yylval = scql::syntax::alloc(*yylloc); return '['; }
 
-"]"                     { return ']'; }
+"]"                     { *yylval = scql::syntax::alloc(*yylloc); return ']'; }
 
-"("                     { return '('; }
+"("                     { *yylval = scql::syntax::alloc(*yylloc); return '('; }
 
-")"                     { return ')'; }
+")"                     { *yylval = scql::syntax::alloc(*yylloc); return ')'; }
 
-"*"                     { return '*'; }
+"*"                     { *yylval = scql::syntax::alloc(*yylloc); return '*'; }
 
 {ident}                 { *yylval = scql::ident::alloc(yytext, yyleng, *yylloc); return scqlIDENT; }
 
