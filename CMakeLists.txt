@@ -48,7 +48,7 @@ cmake_policy(SET CMP0098 NEW)
 set_source_files_properties(scql-tab.cc PROPERTIES COMPILE_FLAGS "-Wno-redundant-decls -Wno-free-nonheap-object")
 set_source_files_properties(scql-scan.cc PROPERTIES COMPILE_FLAGS "-Wno-useless-cast -Wno-sign-compare -Wno-redundant-decls")
 
-add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS} linear.cc mnist.S iris.S data.cc data.hh)
+add_executable(mockup repl.cc scql.cc scql.hh scql.y ${BISON_Parser_OUTPUTS} scql.l ${FLEX_Scanner_OUTPUTS} linear.cc mnist.S iris.S data.cc data.hh code.cc code.hh)
 
 set_property(SOURCE mnist.S APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
 set_property(SOURCE iris.S APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")

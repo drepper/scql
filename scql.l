@@ -62,6 +62,8 @@ ident                   [[:alpha:]][[:alnum:]_]*
 
 ","                     { *yylval = scql::syntax::alloc(*yylloc); return ','; }
 
+";"                     { *yylval = scql::syntax::alloc(*yylloc); return ';'; }
+
 "["                     { *yylval = scql::syntax::alloc(*yylloc); return '['; }
 
 "]"                     { *yylval = scql::syntax::alloc(*yylloc); return ']'; }

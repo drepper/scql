@@ -507,10 +507,12 @@ namespace repl {
   const std::string color_codecell = "\e[38;5;130m";
   const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
+  const std::string color_fname_missing = "\e[35;5;0m\e[48;5;208m";
   const std::string color_integer = "\e[38;5;118m";
   const std::string color_floatnum = "\e[38;5;33m";
   const std::string color_help = "\e[38;5;250m";
-  const std::string color_help_frame[2] = { "\e[38;5;230m", "\e[38;5;196m" };
+  const std::string color_help_frame[2] = { "\e[38;5;230m", "\e[38;5;230m" };
+  const std::string color_error_frame[2] = { "\e[38;5;230m", "\e[38;5;196m" };
   const std::string color_off = "\e[0m";
 
   void redraw_all(scql::linear& lin)
@@ -526,9 +528,12 @@ namespace repl {
         std::string s;
         switch (l.back()->p->id) {
         case scql::id_type::ident:
-          if (l.size() > 1 && l[l.size() - 2]->p->id == scql::id_type::fcall)
-            tr += color_fname;
-          else
+          if (l.size() > 1 && l[l.size() - 2]->p->id == scql::id_type::fcall) {
+            if (scql::as<scql::fcall>(l[l.size() - 2]->p)->known)
+              tr += color_fname;
+            else
+              tr += color_fname_missing;
+          } else
             tr += color_ident;
           last = l.back();
           break;
@@ -536,7 +541,7 @@ namespace repl {
           last = l.back();
           {
             auto d = scql::as<scql::datacell>(last->p);
-            if (auto av = scql::data::available.check(d->val); av.empty())
+            if (auto av = scql::data::available.match(d->val); av.empty())
               tr += color_datacell_missing;
             else {
               if (std::ranges::find(av, d->val) != av.end())
@@ -669,6 +674,7 @@ namespace repl {
 
     scql::linear lin;
     std::string help;
+    bool is_help = true;
     scql::location help_loc { -1, -1, -1, -1 };
 
     while (true) {
@@ -711,7 +717,7 @@ namespace repl {
                   expand_datacell:
                     auto d = scql::as<scql::datacell>(last->p);
                     sofar = d->val;
-                    matches = scql::data::available.check(sofar);
+                    matches = scql::data::available.match(sofar);
                   }
 
                   if (! matches.empty()) {
@@ -982,6 +988,8 @@ namespace repl {
         }
 
         if (moved) {
+          bool match_after = false;
+
           help.clear();
 
           if (lin.items.empty())
@@ -990,8 +998,10 @@ namespace repl {
             auto[x, y] = string_coords(pos);
             auto ctx = lin.at(x, y);
 
-            if (ctx.empty() && x > 1)
+            if (ctx.empty() && x > 1) {
               ctx = lin.at(x - 1, y);
+              match_after = ! ctx.empty();
+            }
 
             std::string s;
             for (auto& e : ctx) {
@@ -1003,12 +1013,23 @@ namespace repl {
             if (! ctx.empty()) {
               scql::linear::item* last = ctx.back();
               if (last->p->is(scql::id_type::datacell)) {
-                auto d = scql::as<scql::datacell>(last->p);
-                if (auto av = scql::data::available.check(d->val); av.size() == 1 && av[0] == d->val) {
-                  auto& sch = scql::data::available.get(d->val);
-                  help = std::string(sch);
-                  help_loc = d->lloc;
+                if (last->p->shape) {
+                  help = std::string(last->p->shape);
+                  help_loc = last->p->lloc;
+                  is_help = true;
+                } else if (! match_after) {
+                  help = std::format("unknown data cell {}", as<scql::datacell>(last->p)->val);
+                  help_loc = last->p->lloc;
                 }
+              } else if (last->p->is(scql::id_type::datacell)) {
+                auto fc = scql::as<scql::fcall>(last->p);
+                if (fc->shape) {
+                  help = std::string(fc->shape);
+                  is_help = true;
+                } else if (! fc->errmsg.empty()) {
+                  help = fc->errmsg;
+                }
+                help_loc = last->p->lloc;
               }
             }
 
@@ -1051,60 +1072,62 @@ namespace repl {
                 end_y -= adj;
               }
 
+              auto color_frame = is_help ? color_help_frame : color_error_frame;
+
               // XYZ This does not work when the highlighted item spans multiple rows.
               auto mid_col = (help_loc.first_column + help_loc.last_column) / 2;
               auto lx = help_loc.first_column;
               auto ly = help_loc.first_line + 1;
               goto_xy(input_start_col + lx, input_start_row + ly);
               if (lx < mid_col) {
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[0], strlen(boxchars[0]));
                 ++lx;
                 while (lx < mid_col) {
-                  nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                  nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                   nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
                   ++lx;
                 }
               }
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[2], strlen(boxchars[2]));
               ++lx;
               if (lx < help_loc.last_column) {
                 while (lx + 1 < help_loc.last_column) {
-                  nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                  nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                   nn = ::write(STDOUT_FILENO, boxchars[1], strlen(boxchars[1]));
                   ++lx;
                 }
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[3], strlen(boxchars[3]));
               }
               ++ly;
 
               goto_xy(input_start_col + mid_col, input_start_row + ly);
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[4], strlen(boxchars[4]));
               ++ly;
 
               int start_box = std::max(0, input_start_col + mid_col - max_row_len / 2 - 2);
               goto_xy(start_box, input_start_row + ly);
               lx = start_box;
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[5], strlen(boxchars[5]));
               lx += 1;
               while (lx < input_start_col + mid_col) {
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[7], strlen(boxchars[7]));
               ++lx;
               while (lx < start_box + max_row_len + 3) {
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[8], strlen(boxchars[8]));
               ++ly;
 
@@ -1116,14 +1139,14 @@ namespace repl {
 
                 goto_xy(start_box, input_start_row + ly);
                 lx = start_box;
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
                 nn = ::write(STDOUT_FILENO, color_help.data(), std::size(color_help));
                 nn = ::write(STDOUT_FILENO, " ", 1);
                 nn = ::write(STDOUT_FILENO, help.data() + last_off, off - last_off);
                 goto_xy(start_box + 3 + max_row_len, input_start_row + ly);
                 lx = start_box + 3 + max_row_len;
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[9], strlen(boxchars[9]));
 
                 ++ly;
@@ -1132,15 +1155,15 @@ namespace repl {
 
               lx = start_box;
               goto_xy(start_box, input_start_row + ly);
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[10], strlen(boxchars[10]));
               lx += 1;
               while (lx < start_box + max_row_len + 3) {
-                nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+                nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
                 nn = ::write(STDOUT_FILENO, boxchars[6], strlen(boxchars[6]));
                 ++lx;
               }
-              nn = ::write(STDOUT_FILENO, color_help_frame[(lx + ly) % 2].data(), std::size(color_help_frame[(lx + ly) % 2]));
+              nn = ::write(STDOUT_FILENO, color_frame[(lx + ly) % 2].data(), std::size(color_frame[(lx + ly) % 2]));
               nn = ::write(STDOUT_FILENO, boxchars[11], strlen(boxchars[11]));
             }
             nn = ::write(STDOUT_FILENO, color_off.data(), std::size(color_off));

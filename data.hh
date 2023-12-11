@@ -18,6 +18,7 @@ namespace scql::data {
     str,
   };
 
+
   // Scheme representation.
   struct schema {
     struct column {
@@ -31,14 +32,16 @@ namespace scql::data {
     std::vector<size_t> dimens;
     void* data;
 
+    operator bool() const { return ! columns.empty() || ! dimens.empty(); }
     operator std::string() const;
   };
+
 
   // Available data cells.
   struct data_info {
     data_info();
 
-    std::vector<std::string> check(const std::string& pfx);
+    std::vector<std::string> match(const std::string& pfx);
 
     const schema& get(const std::string& s) const;
     schema& get(const std::string& s);

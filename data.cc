@@ -33,14 +33,14 @@ namespace scql::data {
 
     for (const auto& c : columns)
       if (c.label.empty()) {
-        if (c.size == 1)
-          std::format_to(std::back_inserter(res), "{} ", type_names[c.type]);
-        else
+        // if (c.size == 1)
+        //   std::format_to(std::back_inserter(res), "{} ", type_names[c.type]);
+        // else
           std::format_to(std::back_inserter(res), "({} {}) ", c.size, type_names[c.type]);
       } else {
-        if (c.size == 1)
-          std::format_to(std::back_inserter(res), "({} {}) ", c.label, type_names[c.type]);
-        else
+        // if (c.size == 1)
+          // std::format_to(std::back_inserter(res), "({} {}) ", c.label, type_names[c.type]);
+        // else
           std::format_to(std::back_inserter(res), "({} {} {}) ", c.label, c.size, type_names[c.type]);
       }
 
@@ -82,7 +82,7 @@ namespace scql::data {
 
 
 
-  std::vector<std::string> data_info::check(const std::string& pfx)
+  std::vector<std::string> data_info::match(const std::string& pfx)
   {
     std::vector<std::string> res;
     for (auto[n,_] : known)

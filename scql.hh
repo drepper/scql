@@ -66,6 +66,9 @@ namespace scql {
 
     id_type id;
     location lloc;
+    std::string errmsg { };
+
+    data::schema shape { };
   };
 #pragma GCC diagnostic pop
 
@@ -299,7 +302,8 @@ namespace scql {
 
     void prefix_map(std::function<void(part::cptr_type)> fct) override;
 
-    data::schema schema {};
+    bool known = false;
+    data::schema shape {};
 
     bool missing_close = false;
   };
@@ -312,7 +316,7 @@ namespace scql {
   }
 
 
-  void annotate(part::cptr_type& p);
+  void annotate(part::cptr_type& p, std::vector<data::schema*>* last = nullptr);
 
 
   using yyscan_t = void*;
