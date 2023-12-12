@@ -262,15 +262,16 @@ namespace scql {
             if (auto av = scql::code::available.match(fname); av.size() == 1 && av[0] == fname) {
               auto& fct = scql::code::available.get(fname);
 
-              auto oshape = fct.output_shape(*cur[next.size()], f->args);
+              f->known = true;
+
+              auto oshape = fct.output_shape(cur.empty() ? nullptr : cur.size() == 1 ? cur[0] : cur[next.size()], f->args);
               if (std::holds_alternative<std::string>(oshape)) {
                 if (auto& s = std::get<std::string>(oshape); ! s.empty()) {
                   f->errmsg = s;
-                } else {
-                  f->shape = std::get<data::schema>(oshape);
                 }
+              } else {
+                f->shape = std::get<data::schema>(oshape);
               }
-
             }
           }
         }

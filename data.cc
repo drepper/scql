@@ -26,7 +26,8 @@ namespace scql::data {
   {
     std::string res = title;
 
-    res += '\n';
+    if (! res.empty())
+      res += '\n';
 
     for (auto n : dimens)
       std::format_to(std::back_inserter(res), "{} × ", n);

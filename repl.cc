@@ -503,11 +503,11 @@ namespace repl {
   const std::string color_ident = "\e[38;5;200m";
   const std::string color_datacell = "\e[38;5;100m";
   const std::string color_datacell_incomplete = "\e[38;5;142m";
-  const std::string color_datacell_missing = "\e[38;5;0m\e[48;5;100m";
+  const std::string color_datacell_missing = "\e[38;5;0;48;5;100m";
   const std::string color_codecell = "\e[38;5;130m";
   const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
-  const std::string color_fname_missing = "\e[35;5;0m\e[48;5;208m";
+  const std::string color_fname_missing = "\e[38;5;0;48;5;208m";
   const std::string color_integer = "\e[38;5;118m";
   const std::string color_floatnum = "\e[38;5;33m";
   const std::string color_help = "\e[38;5;250m";
@@ -528,8 +528,8 @@ namespace repl {
         std::string s;
         switch (l.back()->p->id) {
         case scql::id_type::ident:
-          if (l.size() > 1 && l[l.size() - 2]->p->id == scql::id_type::fcall) {
-            if (scql::as<scql::fcall>(l[l.size() - 2]->p)->known)
+          if (l.back()->p->parent != nullptr && l.back()->p->parent->is(scql::id_type::fcall)) {
+            if (static_cast<scql::fcall*>(l.back()->p->parent)->known)
               tr += color_fname;
             else
               tr += color_fname_missing;
@@ -1011,25 +1011,36 @@ namespace repl {
             }
 
             if (! ctx.empty()) {
-              scql::linear::item* last = ctx.back();
-              if (last->p->is(scql::id_type::datacell)) {
-                if (last->p->shape) {
-                  help = std::string(last->p->shape);
-                  help_loc = last->p->lloc;
-                  is_help = true;
-                } else if (! match_after) {
-                  help = std::format("unknown data cell {}", as<scql::datacell>(last->p)->val);
-                  help_loc = last->p->lloc;
+              auto last = ctx.back()->p.get();
+              while (last) {
+                if (last->is(scql::id_type::datacell)) {
+                  if (last->shape) {
+                    help = std::string(last->shape);
+                    help_loc = last->lloc;
+                    is_help = true;
+                  } else if (! match_after) {
+                    help = std::format("unknown data cell {}", static_cast<scql::datacell*>(last)->val);
+                    help_loc = last->lloc;
+                    is_help = false;
+                  }
+                  break;
                 }
-              } else if (last->p->is(scql::id_type::datacell)) {
-                auto fc = scql::as<scql::fcall>(last->p);
-                if (fc->shape) {
-                  help = std::string(fc->shape);
-                  is_help = true;
-                } else if (! fc->errmsg.empty()) {
-                  help = fc->errmsg;
+
+                if (last->is(scql::id_type::fcall)) {
+                  auto fc = static_cast<scql::fcall*>(last);
+                  if (fc->shape) {
+                    help = std::string(fc->shape);
+                    is_help = true;
+                  } else if (! fc->errmsg.empty()) {
+                    help = fc->errmsg;
+                    is_help = false;
+                  }
+                  help_loc = last->lloc;
+                  break;
                 }
-                help_loc = last->p->lloc;
+                if (last->parent != nullptr)
+                  break;
+                last = last->parent;
               }
             }
 

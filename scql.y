@@ -110,7 +110,7 @@ stage:            %empty {
                       $3->lloc.first_line = $1->lloc.first_line;
                       $3->lloc.first_column = $1->lloc.first_column;
                     }
-                    scql::as<scql::fcall>($3)->fname = std::move($1);
+                    scql::as<scql::fcall>($3)->set_fname(std::move($1));
                     $$ = std::move($3);
                   }
                 | fname '[' error {

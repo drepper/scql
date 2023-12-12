@@ -53,6 +53,8 @@ namespace scql {
     using cptr_type = std::shared_ptr<part>;
 
     part(id_type id_, const location& lloc_) : id(id_), lloc(lloc_) { }
+    part(const part&) = delete;
+    part operator=(const part&) = delete;
     virtual ~part() = default;
 
     virtual std::string format() const = 0;
@@ -69,6 +71,8 @@ namespace scql {
     std::string errmsg { };
 
     data::schema shape { };
+
+    part* parent = nullptr;
   };
 #pragma GCC diagnostic pop
 
@@ -88,12 +92,12 @@ namespace scql {
     using cptr_type = std::shared_ptr<list>;
 
     list(const location& lloc_) : part(id_type::list, lloc_), l { } { }
-    list(part::cptr_type&& p, const location& lloc_) : part(id_type::list, lloc_), l() { l.emplace_back(std::move(p)); }
-    list(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::list, lloc_), l() { l.emplace_back(std::move(p1)); l.emplace_back(std::move(p2)); }
+    list(part::cptr_type&& p, const location& lloc_) : part(id_type::list, lloc_), l() { if (p) p->parent = this; l.emplace_back(std::move(p)); }
+    list(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::list, lloc_), l() { if (p1) p1->parent = this; l.emplace_back(std::move(p1)); if (p2) p2->parent = this; l.emplace_back(std::move(p2)); }
     ~list() override = default;
 
     void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
-    void add(part::cptr_type&& p) { l.emplace_back(std::move(p)); }
+    void add(part::cptr_type&& p) { if (p) p->parent = this; l.emplace_back(std::move(p)); }
 
     static auto alloc(const location& lloc_) { return std::make_unique<list>(lloc_); }
     static auto alloc(part::cptr_type&& p, const location& lloc_) { return std::make_unique<list>(std::move(p), lloc_); }
@@ -108,7 +112,7 @@ namespace scql {
     std::vector<part::cptr_type> l;
 
   protected:
-    list(id_type id_, part::cptr_type&& p, const location& lloc_) : part(id_, lloc_), l() { l.emplace_back(std::move(p)); }
+    list(id_type id_, part::cptr_type&& p, const location& lloc_) : part(id_, lloc_), l() { if (p) p->parent = this; l.emplace_back(std::move(p)); }
 
     std::string name = "list";
   };
@@ -124,11 +128,11 @@ namespace scql {
   struct pipeline : part {
     using cptr_type = std::shared_ptr<pipeline>;
 
-    pipeline(part::cptr_type&& p, const location& lloc_) : part(id_type::pipeline, lloc_), l() { l.emplace_back(std::move(p)); }
-    pipeline(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::pipeline, lloc_), l() { l.emplace_back(std::move(p1)); l.emplace_back(std::move(p2)); }
+    pipeline(part::cptr_type&& p, const location& lloc_) : part(id_type::pipeline, lloc_), l() { if (p) p->parent = this; l.emplace_back(std::move(p)); }
+    pipeline(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) : part(id_type::pipeline, lloc_), l() { if (p1) p1->parent = this; l.emplace_back(std::move(p1)); if (p2) p2->parent = this; l.emplace_back(std::move(p2)); }
     ~pipeline() override = default;
 
-    void prepend(part::cptr_type&& p) { l.emplace(l.begin(), std::move(p)); }
+    void prepend(part::cptr_type&& p) { if (p) p->parent = this; l.emplace(l.begin(), std::move(p)); }
 
     static auto alloc(part::cptr_type&& p, const location& lloc_) { return std::make_unique<pipeline>(std::move(p), lloc_); }
     static auto alloc(part::cptr_type&& p1, part::cptr_type&& p2, const location& lloc_) { return std::make_unique<pipeline>(std::move(p1), std::move(p2), lloc_); }
@@ -282,16 +286,17 @@ namespace scql {
   struct fcall : part {
     using cptr_type = std::shared_ptr<fcall>;
 
-    fcall(part::cptr_type&& fname_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)) { }
-    fcall(part::cptr_type&& fname_, part::cptr_type&& arg_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg_)} { }
-    fcall(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg1_), std::move(arg2_)} { }
+    fcall(part::cptr_type&& fname_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)) { if (fname) fname->parent = this; }
+    fcall(part::cptr_type&& fname_, part::cptr_type&& arg_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg_)} { if (fname) fname->parent = this; for (auto& e : args) if (e) e->parent = this; }
+    fcall(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) : part(id_type::fcall, lloc_), fname(std::move(fname_)), args {std::move(arg1_), std::move(arg2_)} { if (fname) fname->parent = this; for (auto& e : args) if (e) e->parent = this; }
     ~fcall() override = default;
 
     static auto alloc(part::cptr_type&& fname_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), lloc_); }
     static auto alloc(part::cptr_type&& fname_, part::cptr_type&& arg_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(arg_), lloc_); }
     static auto alloc(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(arg1_), std::move(arg2_), lloc_); }
 
-    void prepend(part::cptr_type&& p) { args.emplace(args.begin(), std::move(p)); }
+    void set_fname(part::cptr_type&& fname_) { fname_->parent = this; fname = std::move(fname_); }
+    void prepend(part::cptr_type&& p) { p->parent = this; args.emplace(args.begin(), std::move(p)); }
 
     part::cptr_type fname;
     std::vector<part::cptr_type> args {};
@@ -303,7 +308,6 @@ namespace scql {
     void prefix_map(std::function<void(part::cptr_type)> fct) override;
 
     bool known = false;
-    data::schema shape {};
 
     bool missing_close = false;
   };
