@@ -22,7 +22,9 @@ namespace scql::code {
       intmax_t old_multiple = 1;
       intmax_t multiple = 1;
       for (auto e : args)
-        if (e)
+        if (e == nullptr) {
+          return "empty parameter not allowed";
+        } else
           switch (e->id) {
           case id_type::integer:
             req.push_back(as<integer>(e)->val);

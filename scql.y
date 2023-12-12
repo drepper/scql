@@ -165,7 +165,7 @@ arglist:          arg {
                     $$ = scql::fcall::alloc(nullptr, std::move($1), nullptr, lloc);
                   }
                 | error ',' error {
-                    $$ = scql::fcall::alloc(nullptr, $2->lloc);
+                    $$ = scql::fcall::alloc(nullptr, nullptr, nullptr, $2->lloc);
                   }
                 ;
 
