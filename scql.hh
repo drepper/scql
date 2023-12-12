@@ -296,7 +296,7 @@ namespace scql {
     static auto alloc(part::cptr_type&& fname_, part::cptr_type&& arg1_, part::cptr_type&& arg2_, const location& lloc_) { return std::make_unique<fcall>(std::move(fname_), std::move(arg1_), std::move(arg2_), lloc_); }
 
     void set_fname(part::cptr_type&& fname_) { fname_->parent = this; fname = std::move(fname_); }
-    void prepend(part::cptr_type&& p) { p->parent = this; args.emplace(args.begin(), std::move(p)); }
+    void prepend(part::cptr_type&& p) { if (p) p->parent = this; args.emplace(args.begin(), std::move(p)); }
 
     part::cptr_type fname;
     std::vector<part::cptr_type> args {};

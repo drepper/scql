@@ -711,6 +711,7 @@ namespace repl {
               auto[x, y] = string_coords(pos);
               auto l = lin.at(x, y);
               scql::linear::item* last = nullptr;
+              bool is_function = false;
               if (! l.empty()) {
                 last = l.back();
                 if (last->p->expandable()) {
@@ -724,6 +725,7 @@ namespace repl {
                     auto d = scql::as<scql::ident>(last->p);
                     sofar = d->val;
                     matches = scql::code::available.match(sofar);
+                    is_function = ! matches.empty();
                   }
 
                   if (! matches.empty()) {
@@ -744,6 +746,10 @@ namespace repl {
                       size_t nadded = repl.size() - sofar.size();
                       res.insert(pos, repl.data() + sofar.size(), nadded);
                       pos += nadded;
+                      if (is_function && (pos == res.size() || res[pos] != '[')) {
+                        res.insert(pos, "[]");
+                        pos += 1;
+                      }
                       need_redraw = true;
                     }
                   }
