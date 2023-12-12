@@ -652,9 +652,11 @@ namespace repl {
     }
 
 
-  std::string read(const std::string& prompt)
+  std::tuple<std::string,int> read(const std::string& prompt)
   {
     res.clear();
+    int yyres = 0;
+
     pos = 0;
 
     prompt_row = -1;
@@ -977,7 +979,7 @@ namespace repl {
               // XYZ no need to free buffer
               (void) buffer;
 
-              auto yyres = yyparse();
+              yyres = yyparse();
               if (yyres != 0) {
                 auto[x, y] = string_coords(pos);
                 if (scql::result && scql::result->fixup(res, pos, x, y))
@@ -1207,7 +1209,7 @@ namespace repl {
   out:
     ::tcsetattr(STDIN_FILENO, TCSANOW, &old_tios);
 
-    return res;
+    return std::make_tuple(res, yyres);
   }
 
 
@@ -1229,12 +1231,15 @@ int main()
     for (int i = 0; i < repl::cur_width; ++i) std::cout << "\u2501";
     std::cout << "\n";
 
-    auto input = repl::read("prompt> ");
+    auto [input,yyres] = repl::read("prompt> ");
     std::cout << "\n";
     if (input == "quit")
       break;
 
-    std::cout << "handle \"" << input << "\"\n";
+    if (yyres == 0)
+      std::cout << "handle \"" << input << "\"\n";
+    else
+      std::cout << "invalid input \"" << input << "\"\n";
   }
 
   repl::fini();

@@ -34,10 +34,13 @@ extern void yyerror(const YYLTYPE* l, const char* s);
 %token END
 
 
+%start start
+
 %%
 
 start:            pipeline END {
                     scql::result = std::move($1);
+                    YYACCEPT;
                   }
                 ;
 
