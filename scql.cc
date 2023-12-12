@@ -303,6 +303,10 @@ namespace scql {
         if (e == nullptr || ! valid(e))
           return false;
       return true;
+    case id_type::integer:
+    case id_type::floatnum:
+    case id_type::string:
+      return true;
     default:
       break;
     }
