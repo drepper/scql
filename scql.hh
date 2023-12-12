@@ -322,6 +322,8 @@ namespace scql {
 
   void annotate(part::cptr_type& p, std::vector<data::schema*>* last = nullptr);
 
+  bool valid(part::cptr_type& p);
+
 
   using yyscan_t = void*;
 

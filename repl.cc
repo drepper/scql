@@ -1236,7 +1236,7 @@ int main()
     if (input == "quit")
       break;
 
-    if (yyres == 0)
+    if (yyres == 0 && scql::valid(scql::result))
       std::cout << "handle \"" << input << "\"\n";
     else
       std::cout << "invalid input \"" << input << "\"\n";

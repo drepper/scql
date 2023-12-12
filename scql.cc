@@ -1,6 +1,7 @@
 #include "scql.hh"
 #include "code.hh"
 
+#include <algorithm>
 #include <cassert>
 
 using namespace std::literals;
@@ -257,8 +258,8 @@ namespace scql {
             next.push_back(nullptr);
         } else if (ee->is(id_type::fcall)) {
           auto f = scql::as<scql::fcall>(ee);
-          if (f->fname) {
-            auto fname = as<scql::string>(f->fname)->val;
+          if (f->fname && f->fname->is(id_type::ident)) {
+            auto fname = as<scql::ident>(f->fname)->val;
             if (auto av = scql::code::available.match(fname); av.size() == 1 && av[0] == fname) {
               auto& fct = scql::code::available.get(fname);
 
@@ -278,6 +279,34 @@ namespace scql {
       }
       cur = std::move(next);
     }
+  }
+
+
+  bool valid(part::cptr_type& p)
+  {
+    switch (p->id) {
+    case id_type::datacell:
+      return p->shape;
+    case id_type::fcall:
+      return as<fcall>(p)->fname->is(id_type::ident) && as<fcall>(p)->known && p->shape;
+    case id_type::pipeline:
+      if (as<pipeline>(p)->l.empty())
+        return false;
+      for (auto& e : as<pipeline>(p)->l)
+        if (e == nullptr || ! valid(e))
+          return false;
+      return true;
+    case id_type::statements:
+      if (as<statements>(p)->l.empty())
+        return false;
+      for (auto& e : as<statements>(p)->l)
+        if (e == nullptr || ! valid(e))
+          return false;
+      return true;
+    default:
+      break;
+    }
+    return false;
   }
 
 
