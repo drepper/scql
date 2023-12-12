@@ -25,6 +25,7 @@
 #include "scql-tab.hh"
 #include "scql-scan.hh"
 #include "data.hh"
+#include "code.hh"
 
 using namespace std::literals;
 
@@ -718,6 +719,11 @@ namespace repl {
                     auto d = scql::as<scql::datacell>(last->p);
                     sofar = d->val;
                     matches = scql::data::available.match(sofar);
+                  } else if (last->p->is(scql::id_type::ident)) {
+                  expand_ident:
+                    auto d = scql::as<scql::ident>(last->p);
+                    sofar = d->val;
+                    matches = scql::code::available.match(sofar);
                   }
 
                   if (! matches.empty()) {
@@ -748,6 +754,8 @@ namespace repl {
                   last = l.back();
                   if (last->p->is(scql::id_type::datacell))
                     goto expand_datacell;
+                  if (last->p->is(scql::id_type::ident))
+                    goto expand_ident;
                 }
               }
             }
@@ -1038,7 +1046,7 @@ namespace repl {
                   help_loc = last->lloc;
                   break;
                 }
-                if (last->parent != nullptr)
+                if (last->parent == nullptr)
                   break;
                 last = last->parent;
               }
