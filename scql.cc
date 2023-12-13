@@ -230,6 +230,7 @@ namespace scql {
     if (last != nullptr)
       cur = *last;
 
+    bool first = true;
     for (auto& e : pl->l) {
       if (e == nullptr) {
         cur.clear();
@@ -242,40 +243,46 @@ namespace scql {
       assert(e->is(id_type::statements));
       auto stmts = as<statements>(e);
       for (auto& ee : stmts->l) {
-        if (ee == nullptr) {
+        if (ee == nullptr)
           next.push_back(nullptr);
-          continue;
-        }
-        ee->errmsg.clear();
-        if (ee->is(id_type::pipeline))
-          annotate(ee, last);
-        else if (ee->is(id_type::datacell)) {
-          auto d = scql::as<scql::datacell>(ee);
-          if (auto av = scql::data::available.match(d->val); av.size() == 1 && av[0] == d->val) {
-            d->shape = scql::data::available.get(d->val);
-            next.push_back(&d->shape);
-          } else
-            next.push_back(nullptr);
-        } else if (ee->is(id_type::fcall)) {
-          auto f = scql::as<scql::fcall>(ee);
-          if (f->fname && f->fname->is(id_type::ident)) {
-            auto fname = as<scql::ident>(f->fname)->val;
-            if (auto av = scql::code::available.match(fname); av.size() == 1 && av[0] == fname) {
-              auto& fct = scql::code::available.get(fname);
+        else {
+          ee->errmsg.clear();
+          if (ee->is(id_type::pipeline))
+            annotate(ee, last);
+          else if (ee->is(id_type::datacell)) {
+            auto d = scql::as<scql::datacell>(ee);
+            if (auto av = scql::data::available.match(d->val); av.size() == 1 && av[0] == d->val) {
+              d->shape = scql::data::available.get(d->val);
+              next.push_back(&d->shape);
+            } else if (! first && cur.size() == 1) {
+              // This is an assignment.
+              d->shape = *cur[0];
+              next.push_back(&d->shape);
+            } else
+              next.push_back(nullptr);
+          } else if (ee->is(id_type::fcall)) {
+            auto f = scql::as<scql::fcall>(ee);
+            if (f->fname && f->fname->is(id_type::ident)) {
+              auto fname = as<scql::ident>(f->fname)->val;
+              if (auto av = scql::code::available.match(fname); av.size() == 1 && av[0] == fname) {
+                auto& fct = scql::code::available.get(fname);
 
-              f->known = true;
+                f->known = true;
 
-              auto oshape = fct.output_shape(cur.empty() ? nullptr : cur.size() == 1 ? cur[0] : cur[next.size()], f->args);
-              if (std::holds_alternative<std::string>(oshape)) {
-                if (auto& s = std::get<std::string>(oshape); ! s.empty()) {
-                  f->errmsg = s;
+                auto oshape = fct.output_shape(cur.empty() ? nullptr : cur.size() == 1 ? cur[0] : cur[next.size()], f->args);
+                if (std::holds_alternative<std::string>(oshape)) {
+                  if (auto& s = std::get<std::string>(oshape); ! s.empty()) {
+                    f->errmsg = s;
+                  }
+                } else {
+                  f->shape = std::get<data::schema>(oshape);
+                  next.push_back(&f->shape);
                 }
-              } else {
-                f->shape = std::get<data::schema>(oshape);
               }
             }
           }
         }
+        first = false;
       }
       cur = std::move(next);
     }

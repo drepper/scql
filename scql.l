@@ -86,6 +86,8 @@ ident                   [[:alpha:]][[:alnum:]_]*
 
 {incompletestring}      { auto s = scql::string::alloc(yytext, yyleng, *yylloc); s->missing_close = true; *yylval = std::move(s); return scqlATOM; }
 
+<<EOF>>                 { *yylval = scql::syntax::alloc(*yylloc); return scqlEND; }
+
 
 %%
 

@@ -542,9 +542,12 @@ namespace repl {
           last = l.back();
           {
             auto d = scql::as<scql::datacell>(last->p);
-            if (auto av = scql::data::available.match(d->val); av.empty())
-              tr += color_datacell_missing;
-            else {
+            if (auto av = scql::data::available.match(d->val); av.empty()) {
+              if (! d->shape)
+                tr += color_datacell_missing;
+              else
+                tr += color_datacell;
+            } else {
               if (std::ranges::find(av, d->val) != av.end())
                 tr += color_datacell;
               else
@@ -1236,9 +1239,17 @@ int main()
     if (input == "quit")
       break;
 
-    if (yyres == 0 && scql::valid(scql::result))
-      std::cout << "handle \"" << input << "\"\n";
-    else
+    if (yyres == 0 && scql::valid(scql::result)) {
+      assert(scql::result->is(scql::id_type::pipeline));
+      auto p = scql::as<scql::pipeline>(scql::result);
+      assert(! p->l.empty());
+
+      if (p->l.size() > 1 && p->l.back()->is(scql::id_type::statements)
+          && as<scql::statements>(p->l.back())->l.back()->is(scql::id_type::datacell)) {
+        std::cout << "store result in " << as<scql::datacell>(as<scql::statements>(p->l.back())->l.back())->val << std::endl;
+      } else
+        std::cout << "implement handling \"" << input << "\"\n";
+    } else
       std::cout << "invalid input \"" << input << "\"\n";
   }
 
