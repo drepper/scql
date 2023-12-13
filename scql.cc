@@ -253,6 +253,7 @@ namespace scql {
             auto d = scql::as<scql::datacell>(ee);
             if (auto av = scql::data::available.match(d->val); av.size() == 1 && av[0] == d->val) {
               d->shape = scql::data::available.get(d->val);
+              d->permission = first || d->shape.writable;
               next.push_back(&d->shape);
             } else if (! first && cur.size() == 1) {
               // This is an assignment.
@@ -293,7 +294,7 @@ namespace scql {
   {
     switch (p->id) {
     case id_type::datacell:
-      return p->shape;
+      return p->shape && p->errmsg.empty();
     case id_type::fcall:
       return as<fcall>(p)->fname->is(id_type::ident) && as<fcall>(p)->known && p->shape;
     case id_type::pipeline:

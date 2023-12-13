@@ -252,6 +252,7 @@ namespace scql {
     std::string format() const override;
 
     data::schema* schema = nullptr;
+    bool permission = true;
   };
 
 

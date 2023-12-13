@@ -505,6 +505,7 @@ namespace repl {
   const std::string color_datacell = "\e[38;5;100m";
   const std::string color_datacell_incomplete = "\e[38;5;142m";
   const std::string color_datacell_missing = "\e[38;5;0;48;5;100m";
+  const std::string color_datacell_permission = "\e[38;5;196;48;5;252m";
   const std::string color_codecell = "\e[38;5;130m";
   const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
@@ -542,7 +543,10 @@ namespace repl {
           last = l.back();
           {
             auto d = scql::as<scql::datacell>(last->p);
-            if (auto av = scql::data::available.match(d->val); av.empty()) {
+            if (! d->permission) {
+              tr += color_datacell_permission;
+              d->errmsg = "no permission to write";
+            } else if (auto av = scql::data::available.match(d->val); av.empty()) {
               if (! d->shape)
                 tr += color_datacell_missing;
               else
@@ -1033,7 +1037,11 @@ namespace repl {
               auto last = ctx.back()->p.get();
               while (last) {
                 if (last->is(scql::id_type::datacell)) {
-                  if (last->shape) {
+                  if (! last->errmsg.empty()) {
+                    help = last->errmsg;
+                    help_loc = last->lloc;
+                    is_help = false;
+                  } else if (last->shape) {
                     help = std::string(last->shape);
                     help_loc = last->lloc;
                     is_help = true;

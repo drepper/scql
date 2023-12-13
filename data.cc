@@ -52,10 +52,10 @@ namespace scql::data {
   data_info::data_info()
   : known { }
   {
-    known.emplace_back(std::make_tuple("mnist_images"s, schema { "MNIST image data"s, { schema::column { data_type::u8, 1zu, ""s } }, { 54880000zu }, static_cast<void*>(mnist_images) }));
-    known.emplace_back(std::make_tuple("mnist_labels"s, schema { "MNIST image label"s, { schema::column { data_type::u8, 1zu, ""s } }, { 70000zu }, static_cast<void*>(mnist_labels) }));
+    known.emplace_back(std::make_tuple("mnist_images"s, schema { "MNIST image data"s, { schema::column { data_type::u8, 1zu, ""s } }, { 54880000zu }, static_cast<void*>(mnist_images), false }));
+    known.emplace_back(std::make_tuple("mnist_labels"s, schema { "MNIST image label"s, { schema::column { data_type::u8, 1zu, ""s } }, { 70000zu }, static_cast<void*>(mnist_labels), false }));
 
-    known.emplace_back(std::make_tuple("iris_data"s, schema { "Fisher's Iris data set"s, { schema::column { data_type::str, 4zu, ""s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Petal.Length"s }, schema::column { data_type::f32, 1zu, "Petal.Width"s }, schema::column { data_type::str, 12zu, "Species"s }, }, { 150zu }, static_cast<void*>(iris_data) }));
+    known.emplace_back(std::make_tuple("iris_data"s, schema { "Fisher's Iris data set"s, { schema::column { data_type::str, 4zu, ""s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Petal.Length"s }, schema::column { data_type::f32, 1zu, "Petal.Width"s }, schema::column { data_type::str, 12zu, "Species"s }, }, { 150zu }, static_cast<void*>(iris_data), false }));
   }
 
 

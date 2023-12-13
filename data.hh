@@ -31,6 +31,7 @@ namespace scql::data {
     std::vector<column> columns;
     std::vector<size_t> dimens;
     void* data;
+    bool writable = true;    // In a real implementation this would be a ACL or RBAC system.
 
     operator bool() const { return ! columns.empty() || ! dimens.empty(); }
     operator std::string() const;
