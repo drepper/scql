@@ -505,7 +505,7 @@ namespace repl {
   const std::string color_datacell = "\e[38;5;100m";
   const std::string color_datacell_incomplete = "\e[38;5;142m";
   const std::string color_datacell_missing = "\e[38;5;0;48;5;100m";
-  const std::string color_datacell_permission = "\e[38;5;196;48;5;252m";
+  const std::string color_datacell_permission = "\e[38;5;196;48;5;239m";
   const std::string color_codecell = "\e[38;5;130m";
   const std::string color_computecell = "\e[38;5;220m";
   const std::string color_fname = "\e[38;5;208m";
