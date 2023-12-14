@@ -762,8 +762,10 @@ namespace repl {
                       need_redraw = true;
                     }
                   }
+                  break;
                 }
-              } else if (x > 0) {
+              }
+              if (x > 0) {
                 l = lin.at(x - 1, y);
                 if (! l.empty() && l.back() != last && l.back()->p->expandable()) {
                   last = l.back();
