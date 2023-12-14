@@ -986,7 +986,47 @@ namespace repl {
               // XYZ no need to free buffer
               (void) buffer;
 
+              auto old_yyres = yyres;
               yyres = yyparse();
+              if (yyres != 0 && old_yyres == 0 && pos > 0)
+                switch (res[pos - 1]) {
+                case '(':
+                  {
+                    auto res2 = res;
+                    res2.insert(pos, 1, ')');
+                    buffer = scql_scan_bytes(res2.data(), res2.size());
+                    if (yyparse() == 0) {
+                      yyres = 0;
+                      res = res2;
+                    }
+                  }
+                  break;
+                case '[':
+                  {
+                    auto res2 = res;
+                    res2.insert(pos, 1, ']');
+                    buffer = scql_scan_bytes(res2.data(), res2.size());
+                    if (yyparse() == 0) {
+                      yyres = 0;
+                      res = res2;
+                    }
+                  }
+                  break;
+                case '{':
+                  {
+                    auto res2 = res;
+                    res2.insert(pos, 1, '}');
+                    buffer = scql_scan_bytes(res2.data(), res2.size());
+                    if (yyparse() == 0) {
+                      yyres = 0;
+                      res = res2;
+                    }
+                  }
+                  break;
+                default:
+                  break;
+                }
+
               if (yyres != 0) {
                 auto[x, y] = string_coords(pos);
                 if (scql::result && scql::result->fixup(res, pos, x, y))
