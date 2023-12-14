@@ -219,7 +219,7 @@ namespace scql {
   part::cptr_type result;
 
 
-  void annotate(part::cptr_type& p, std::vector<data::schema*>* last)
+  void annotate(part::cptr_type& p, std::vector<data::schema*>* last, bool first)
   {
     if (p->id != id_type::pipeline)
       return;
@@ -230,7 +230,6 @@ namespace scql {
     if (last != nullptr)
       cur = *last;
 
-    bool first = true;
     for (auto& e : pl->l) {
       if (e == nullptr) {
         cur.clear();
@@ -242,13 +241,14 @@ namespace scql {
       e->errmsg.clear();
       assert(e->is(id_type::statements));
       auto stmts = as<statements>(e);
+      bool first_statement = first;
       for (auto& ee : stmts->l) {
         if (ee == nullptr)
           next.push_back(nullptr);
         else {
           ee->errmsg.clear();
           if (ee->is(id_type::pipeline))
-            annotate(ee, last);
+            annotate(ee, last, first_statement);
           else if (ee->is(id_type::datacell)) {
             auto d = scql::as<scql::datacell>(ee);
             if (auto av = scql::data::available.match(d->val); av.size() == 1 && av[0] == d->val) {
@@ -283,8 +283,9 @@ namespace scql {
             }
           }
         }
-        first = false;
+        first_statement = false;
       }
+      first = false;
       cur = std::move(next);
     }
   }

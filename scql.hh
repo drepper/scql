@@ -321,7 +321,7 @@ namespace scql {
   }
 
 
-  void annotate(part::cptr_type& p, std::vector<data::schema*>* last = nullptr);
+  void annotate(part::cptr_type& p, std::vector<data::schema*>* last = nullptr, bool first = true);
 
   bool valid(part::cptr_type& p);
 
