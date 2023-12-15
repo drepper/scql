@@ -34,15 +34,23 @@ namespace scql::data {
 
     for (const auto& c : columns)
       if (c.label.empty()) {
-        // if (c.size == 1)
-        //   std::format_to(std::back_inserter(res), "{} ", type_names[c.type]);
-        // else
-          std::format_to(std::back_inserter(res), "({} {}) ", c.size, type_names[c.type]);
+        if (c.dimens.size() == 1)
+          std::format_to(std::back_inserter(res), "({} {}) ", c.dimens[0], type_names[c.type]);
+        else {
+          res += '(';
+          for (auto n : c.dimens)
+            std::format_to(std::back_inserter(res), "{} × ", n);
+          std::format_to(std::back_inserter(res), "{}) ", type_names[c.type]);
+        }
       } else {
-        // if (c.size == 1)
-          // std::format_to(std::back_inserter(res), "({} {}) ", c.label, type_names[c.type]);
-        // else
-          std::format_to(std::back_inserter(res), "({} {} {}) ", c.label, c.size, type_names[c.type]);
+        if (c.dimens.size() == 1)
+          std::format_to(std::back_inserter(res), "({} {} {}) ", c.label, c.dimens[0], type_names[c.type]);
+        else {
+          std::format_to(std::back_inserter(res), "({} ", c.label);
+          for (auto n : c.dimens)
+            std::format_to(std::back_inserter(res), "{} × ", n);
+          std::format_to(std::back_inserter(res), "{}) ", type_names[c.type]);
+        }
       }
 
     return res;
@@ -52,10 +60,10 @@ namespace scql::data {
   data_info::data_info()
   : known { }
   {
-    known.emplace_back(std::make_tuple("mnist_images"s, schema { "MNIST image data"s, { schema::column { data_type::u8, 1zu, ""s } }, { 54880000zu }, static_cast<void*>(mnist_images), false }));
-    known.emplace_back(std::make_tuple("mnist_labels"s, schema { "MNIST image label"s, { schema::column { data_type::u8, 1zu, ""s } }, { 70000zu }, static_cast<void*>(mnist_labels), false }));
+    known.emplace_back(std::make_tuple("mnist_images"s, schema { "MNIST image data"s, { schema::column { data_type::u8, { 1zu }, ""s } }, { 54880000zu }, static_cast<void*>(mnist_images), false }));
+    known.emplace_back(std::make_tuple("mnist_labels"s, schema { "MNIST image label"s, { schema::column { data_type::u8, { 1zu }, ""s } }, { 70000zu }, static_cast<void*>(mnist_labels), false }));
 
-    known.emplace_back(std::make_tuple("iris_data"s, schema { "Fisher's Iris data set"s, { schema::column { data_type::str, 4zu, ""s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Sepal.Width"s }, schema::column { data_type::f32, 1zu, "Petal.Length"s }, schema::column { data_type::f32, 1zu, "Petal.Width"s }, schema::column { data_type::str, 12zu, "Species"s }, }, { 150zu }, static_cast<void*>(iris_data), false }));
+    known.emplace_back(std::make_tuple("iris_data"s, schema { "Fisher's Iris data set"s, { schema::column { data_type::str, { 4zu }, ""s }, schema::column { data_type::f32, { 1zu }, "Sepal.Width"s }, schema::column { data_type::f32, { 1zu }, "Sepal.Width"s }, schema::column { data_type::f32, { 1zu }, "Petal.Length"s }, schema::column { data_type::f32, { 1zu }, "Petal.Width"s }, schema::column { data_type::str, { 12zu }, "Species"s }, }, { 150zu }, static_cast<void*>(iris_data), false }));
   }
 
 

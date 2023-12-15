@@ -23,7 +23,7 @@ namespace scql::data {
   struct schema {
     struct column {
       data_type type;
-      size_t size;
+      std::vector<size_t> dimens;
       std::string label;
     };
 
