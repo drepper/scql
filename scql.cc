@@ -288,6 +288,8 @@ namespace scql {
       first = false;
       cur = std::move(next);
     }
+    if (cur.size() == 1 && cur[0] != nullptr)
+      pl->shape = *cur[0];
   }
 
 
