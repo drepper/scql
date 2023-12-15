@@ -10,3 +10,4 @@ mnist_images:
 mnist_labels:
 	.incbin "mnist-labels-ubyte"
 	.size mnist_labels, .-mnist_labels
+	.section .note.GNU-stack,"",@progbits

@@ -453,4 +453,4 @@ iris_data:
         .float 5.9, 3, 5.1, 1.8
         .ascii "virginica\0\0\0"
         .size iris_data, .-iris_data
-
+	.section .note.GNU-stack,"",@progbits

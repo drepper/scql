@@ -45,6 +45,12 @@ namespace scql {
 #define YYLTYPE scql::location
 
 
+  inline bool in(const location& lloc, int x, int y) {
+    return ((y > lloc.first_line || (y == lloc.first_line && x >= lloc.first_column))
+            && (y < lloc.last_line || (y == lloc.last_line && x <= lloc.last_column)));
+  }
+
+
 #pragma GCC diagnostic push
 // This warning must be disable due to the std::enable_shared_from_this class.
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"

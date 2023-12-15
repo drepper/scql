@@ -1107,17 +1107,46 @@ namespace repl {
                   help_loc = last->lloc;
                   break;
                 }
+
+                if (last->is(scql::id_type::pipeline)) {
+                  // Show the part of the pipeline where the cursor is.
+                  auto pi = static_cast<scql::pipeline*>(last);
+                  if (! pi->l.empty()) {
+                    assert(scql::in(last->lloc, x, y));
+
+                    const scql::part* end = nullptr;
+                    for (const auto& e : pi->l)
+                      if (y < e->lloc.first_line || (y == e->lloc.first_line && x <= e->lloc.first_column))
+                        break;
+                      else
+                        end = e.get();
+
+                    if (end != nullptr) {
+                      auto st = static_cast<const scql::statements*>(end);
+                      if (st->l.back()->shape) {
+                        help = std::string(st->l.back()->shape);
+                        help_loc.first_line = last->lloc.first_line;
+                        help_loc.first_column = last->lloc.first_column;
+                        help_loc.last_line = st->l.back()->lloc.last_line;
+                        help_loc.last_column = st->l.back()->lloc.last_column;
+                        is_help = true;
+                      }
+                    }
+                  }
+                  break;
+                }
+
                 if (last->parent == nullptr)
                   break;
                 last = last->parent;
               }
             }
 
-            if (help.empty()) {
-              move(res.size());
-              nn = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
+            move(res.size());
+            nn = ::write(STDOUT_FILENO, ed0, sizeof(ed0));
+            if (help.empty())
               move();
-            } else {
+            else {
               size_t help_nrows = 1;
               std::string::size_type last_off = 0;
               auto off = help.find('\n', 0);
