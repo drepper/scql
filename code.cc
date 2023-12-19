@@ -10,7 +10,7 @@ namespace scql::code {
 
   namespace {
 
-    std::variant<std::vector<data::schema>,std::string> reshape_output_shape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::variant<std::vector<data::schema>,std::string> reshape_output_shape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
     {
       // The parameters are supposed to be positive integers or the glob.
       std::vector<intmax_t> req;
@@ -31,7 +31,7 @@ namespace scql::code {
             if (req.back() <= 0)
               goto invalid;
             if (__builtin_mul_overflow(multiple, req.back(), &multiple))
-              goto toohigh;
+              return std::format("requested dimensions too high");
             break;
           case id_type::glob:
             req.push_back(0);
@@ -42,30 +42,32 @@ namespace scql::code {
             return std::format("invalid argument {}\nmust be a positive integer or glob", e->format());
           }
 
-      if (in_schema == nullptr)
+      if (in_schema.empty())
         return "reshapes requires input data";
 
-      for (auto m : in_schema->dimens)
-        old_multiple *= m;
+      std::vector<data::schema> res;
+      for (auto& is : in_schema) {
+        for (auto m : is->dimens)
+          old_multiple *= m;
 
-      if (old_multiple < multiple)
-      toohigh:
-        return std::format("requested dimensions too high");
-      if (old_multiple % multiple != 0)
-        return std::format("defined sizes have remainder of {}", old_multiple % multiple);
+        if (old_multiple < multiple)
+          return std::format("requested dimensions too high");
+        if (old_multiple % multiple != 0)
+          return std::format("defined sizes have remainder of {}", old_multiple % multiple);
 
-      data::schema res { "", in_schema->columns, { }, in_schema->data };
-      for (auto m : req)
-        if (m == 0) {
-          res.dimens.push_back(has_glob ? old_multiple / multiple : 1);
-          has_glob = false;
-        } else
-          res.dimens.push_back(m);
+        res.push_back(data::schema { "", is->columns, { }, is->data });
+        for (auto m : req)
+          if (m == 0) {
+            res.back().dimens.push_back(has_glob ? old_multiple / multiple : 1);
+            has_glob = false;
+          } else
+            res.back().dimens.push_back(m);
+      }
 
-      return std::vector { res };
+      return res;
     }
 
-    std::vector<data::schema> reshape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::vector<data::schema> reshape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
     {
       return std::get<std::vector<data::schema>>(reshape_output_shape(in_schema, args));
     }

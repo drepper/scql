@@ -1122,26 +1122,9 @@ namespace repl {
 
                     if (end != nullptr) {
                       auto st = static_cast<const scql::statements*>(end);
-#if 0
-                      help = "";
-                      help_loc = { y, x, y, x };
-                      for (const auto& e : st->l) {
-                        if (! e->shape.empty()) {
-                          if (! help.empty())
-                            help += '\n';
-                          help += format(e->shape);
-                          help_loc.first_line = std::min(help_loc.first_line, last->lloc.first_line);
-                          help_loc.first_column = std::min(help_loc.first_column, last->lloc.first_column);
-                          help_loc.last_line = std::max(help_loc.last_line, e->lloc.last_line);
-                          help_loc.last_column = std::max(help_loc.last_column, e->lloc.last_column);
-                          is_help = true;
-                        }
-                      }
-#else
                       help = format(st->shape);
                       help_loc = { pi->lloc.first_line, pi->lloc.first_column, st->lloc.last_line, st->lloc.last_column };
                       is_help = true;
-#endif
                     }
                   }
                   break;

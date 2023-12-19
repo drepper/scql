@@ -276,7 +276,7 @@ namespace scql {
 
                 f->known = true;
 
-                auto oshape = fct.output_shape(cur.empty() ? nullptr : cur.size() == 1 ? cur[0] : cur[next.size()], f->args);
+                auto oshape = fct.output_shape(cur, f->args);
                 if (std::holds_alternative<std::string>(oshape)) {
                   if (auto& s = std::get<std::string>(oshape); ! s.empty()) {
                     f->errmsg = s;
