@@ -122,7 +122,7 @@ stage:            %empty {
                       lloc.first_line = $1->lloc.first_line;
                       lloc.first_column = $1->lloc.first_column;
                     }
-                    auto n = scql::fcall::alloc(std::move($1), nullptr, lloc);
+                    auto n = scql::fcall::alloc(std::move($1), lloc);
                     n->missing_close = true;
                     $$ = std::move(n);
                   }

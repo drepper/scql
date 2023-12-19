@@ -10,8 +10,8 @@
 namespace scql::code {
 
   struct function {
-    using t_output_shape = std::variant<std::vector<data::schema>,std::string> (*)(const std::vector<data::schema*>&, const std::vector<part::cptr_type>&);
-    using t_operate = std::vector<data::schema> (*)(const std::vector<data::schema*>&, const std::vector<part::cptr_type>&);
+    using t_output_shape = std::variant<std::vector<data::schema>,std::string> (*)(const std::vector<data::schema*>&, std::vector<part::cptr_type>&);
+    using t_operate = std::vector<data::schema> (*)(const std::vector<data::schema*>&, std::vector<part::cptr_type>&);
 
     function(t_output_shape f_output_shape_, t_operate f_operate_)
     : f_output_shape(f_output_shape_), f_operate(f_operate_)
@@ -19,9 +19,9 @@ namespace scql::code {
     function(const function&) = delete;
     function operator=(const function&) = delete;
 
-    std::variant<std::vector<data::schema>,std::string> output_shape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args) const { return f_output_shape(in_schema, args); }
+    std::variant<std::vector<data::schema>,std::string> output_shape(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args) const { return f_output_shape(in_schema, args); }
 
-    std::vector<data::schema> operator()(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args) const { return f_operate(in_schema, args); }
+    std::vector<data::schema> operator()(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args) const { return f_operate(in_schema, args); }
 
   private:
     t_output_shape f_output_shape;

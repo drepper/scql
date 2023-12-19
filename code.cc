@@ -1,7 +1,9 @@
 #include "code.hh"
+#include "scql.hh"
 
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <format>
 #include <utility>
 
@@ -12,7 +14,7 @@ namespace scql::code {
 
   namespace {
 
-    std::variant<std::vector<data::schema>,std::string> reshape_output_shape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
+    std::variant<std::vector<data::schema>,std::string> reshape_output_shape(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
     {
       // The parameters are supposed to be positive integers or the glob.
       std::vector<intmax_t> req;
@@ -69,7 +71,7 @@ namespace scql::code {
       return res;
     }
 
-    std::vector<data::schema> reshape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
+    std::vector<data::schema> reshape(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
     {
       return std::get<std::vector<data::schema>>(reshape_output_shape(in_schema, args));
     }
@@ -80,7 +82,7 @@ namespace scql::code {
     };
 
 
-    std::variant<std::vector<data::schema>,std::string> zip_output_shape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
+    std::variant<std::vector<data::schema>,std::string> zip_output_shape(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
     {
       if (! args.empty())
         return "zip does not expect arguments"s;
@@ -112,8 +114,9 @@ namespace scql::code {
       return std::vector { res };
     }
 
-    std::vector<data::schema> zip(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
+    std::vector<data::schema> zip(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
     {
+      // XYZ This is not a real implementation.
       (void) args;
       std::vector<data::schema> res;
       for (const auto p : in_schema)
@@ -127,6 +130,56 @@ namespace scql::code {
     };
 
 
+
+    std::variant<std::vector<data::schema>,std::string> split_output_shape(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
+    {
+      if (args.size() != 1)
+        return "split expect one argument"s;
+
+      if (in_schema.size() != 1)
+        return std::format("just one input expected, not {}", in_schema.size());
+
+      for (auto p : in_schema)
+        if (p->dimens.front() < 2)
+          return "initial dimension too low";
+
+      if (args[0] == nullptr || ! args[0]->is(id_type::floatnum))
+        return "argument must be float between 0 and 1";
+
+      auto f = as<floatnum>(args[0]);
+      if (! std::isfinite(f->val) || f->val <= 0.0 || f->val >= 1.0)
+        return "argument must be float between 0 and 1";
+
+      std::vector<data::schema> res(2);
+
+      res[0].columns = in_schema[0]->columns;
+      res[0].dimens = in_schema[0]->dimens;
+      res[0].dimens[0] = std::min<size_t>(res[0].dimens[0] - 1, res[0].dimens[0] * f->val);
+
+      res[1].columns = in_schema[0]->columns;
+      res[1].dimens = in_schema[0]->dimens;
+      res[1].dimens[0] -= res[0].dimens[0];
+
+      return res;
+    }
+
+    std::vector<data::schema> split(const std::vector<data::schema*>& in_schema, std::vector<part::cptr_type>& args)
+    {
+      // XYZ This is not a real implementation.
+      (void) args;
+      std::vector<data::schema> res;
+      for (const auto p : in_schema)
+        res.emplace_back(*p);
+      return res;
+    }
+
+    function split_info {
+      split_output_shape,
+      split
+    };
+
+
+
   } // anonymous namespace
 
 
@@ -135,6 +188,7 @@ namespace scql::code {
   {
     known.emplace_back(std::make_tuple("reshape"s, &reshape_info));
     known.emplace_back(std::make_tuple("zip"s, &zip_info));
+    known.emplace_back(std::make_tuple("split"s, &split_info));
   }
 
 
