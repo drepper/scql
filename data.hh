@@ -27,15 +27,18 @@ namespace scql::data {
       std::string label;
     };
 
-    std::string title;
-    std::vector<column> columns;
-    std::vector<size_t> dimens;
-    void* data;
+    std::string title {};
+    std::vector<column> columns {};
+    std::vector<size_t> dimens {};
+    void* data = nullptr;
     bool writable = true;    // In a real implementation this would be a ACL or RBAC system.
 
     operator bool() const { return ! columns.empty() || ! dimens.empty(); }
     operator std::string() const;
   };
+
+
+  std::string format(const std::vector<schema>& vs);
 
 
   // Available data cells.

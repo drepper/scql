@@ -10,7 +10,7 @@ namespace scql::code {
 
   namespace {
 
-    std::variant<data::schema,std::string> reshape_output_shape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::variant<std::vector<data::schema>,std::string> reshape_output_shape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
     {
       // The parameters are supposed to be positive integers or the glob.
       std::vector<intmax_t> req;
@@ -62,18 +62,38 @@ namespace scql::code {
         } else
           res.dimens.push_back(m);
 
-      return res;
+      return std::vector { res };
     }
 
-    data::schema reshape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::vector<data::schema> reshape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
     {
-      return std::get<data::schema>(reshape_output_shape(in_schema, args));
+      return std::get<std::vector<data::schema>>(reshape_output_shape(in_schema, args));
     }
 
     function reshape_info {
       reshape_output_shape,
       reshape
     };
+
+
+#if 0
+    std::variant<data::schema,std::string> zip_output_shape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    {
+      if (! args.empty())
+        return "zip does not expect arguments"s;
+    }
+
+    data::schema zip(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    {
+      return *in_schema;
+    }
+
+    function zip_info {
+      zip_output_shape,
+      zip
+    };
+#endif
+
 
   } // anonymous namespace
 
@@ -82,6 +102,7 @@ namespace scql::code {
   : known { }
   {
     known.emplace_back(std::make_tuple("reshape"s, &reshape_info));
+    // known.emplace_back(std::make_tuple("zip"s, &zip_info));
   }
 
 

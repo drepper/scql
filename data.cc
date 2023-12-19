@@ -57,6 +57,25 @@ namespace scql::data {
   }
 
 
+  std::string format(const std::vector<schema>& vs)
+  {
+    std::string res;
+
+    for (const auto& v : vs) {
+      if (! res.empty())
+        res += '\n';
+
+      if (v)
+        res += std::string(v);
+      else
+        res += "<UNKNOWN>";
+    }
+
+    return res;
+  }
+
+
+
   data_info::data_info()
   : known { }
   {

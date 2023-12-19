@@ -547,7 +547,7 @@ namespace repl {
               tr += color_datacell_permission;
               d->errmsg = "no permission to write";
             } else if (auto av = scql::data::available.match(d->val); av.empty()) {
-              if (! d->shape)
+              if (d->shape.empty())
                 tr += color_datacell_missing;
               else
                 tr += color_datacell;
@@ -1083,8 +1083,8 @@ namespace repl {
                     help = last->errmsg;
                     help_loc = last->lloc;
                     is_help = false;
-                  } else if (last->shape) {
-                    help = std::string(last->shape);
+                  } else if (! last->shape.empty()) {
+                    help = format(last->shape);
                     help_loc = last->lloc;
                     is_help = true;
                   } else if (! match_after) {
@@ -1096,12 +1096,11 @@ namespace repl {
                 }
 
                 if (last->is(scql::id_type::fcall)) {
-                  auto fc = static_cast<scql::fcall*>(last);
-                  if (fc->shape) {
-                    help = std::string(fc->shape);
+                  if (! last->shape.empty()) {
+                    help = format(last->shape);
                     is_help = true;
-                  } else if (! fc->errmsg.empty()) {
-                    help = fc->errmsg;
+                  } else if (! last->errmsg.empty()) {
+                    help = last->errmsg;
                     is_help = false;
                   }
                   help_loc = last->lloc;
@@ -1123,13 +1122,14 @@ namespace repl {
 
                     if (end != nullptr) {
                       auto st = static_cast<const scql::statements*>(end);
+#if 0
                       help = "";
                       help_loc = { y, x, y, x };
                       for (const auto& e : st->l) {
-                        if (e->shape) {
+                        if (! e->shape.empty()) {
                           if (! help.empty())
                             help += '\n';
-                          help += std::string(e->shape);
+                          help += format(e->shape);
                           help_loc.first_line = std::min(help_loc.first_line, last->lloc.first_line);
                           help_loc.first_column = std::min(help_loc.first_column, last->lloc.first_column);
                           help_loc.last_line = std::max(help_loc.last_line, e->lloc.last_line);
@@ -1137,6 +1137,11 @@ namespace repl {
                           is_help = true;
                         }
                       }
+#else
+                      help = format(st->shape);
+                      help_loc = { pi->lloc.first_line, pi->lloc.first_column, st->lloc.last_line, st->lloc.last_column };
+                      is_help = true;
+#endif
                     }
                   }
                   break;

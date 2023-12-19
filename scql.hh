@@ -76,7 +76,7 @@ namespace scql {
     location lloc;
     std::string errmsg { };
 
-    data::schema shape { };
+    std::vector<data::schema> shape { };
 
     part* parent = nullptr;
   };

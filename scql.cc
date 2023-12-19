@@ -247,18 +247,24 @@ namespace scql {
           next.push_back(nullptr);
         else {
           ee->errmsg.clear();
-          if (ee->is(id_type::pipeline))
+          if (ee->is(id_type::pipeline)) {
             annotate(ee, last, first_statement);
-          else if (ee->is(id_type::datacell)) {
+
+            // next.append_range(ee->shape);
+            for (auto& pp : ee->shape)
+              next.push_back(&pp);
+          } else if (ee->is(id_type::datacell)) {
             auto d = scql::as<scql::datacell>(ee);
             if (auto av = scql::data::available.match(d->val); av.size() == 1 && av[0] == d->val) {
-              d->shape = scql::data::available.get(d->val);
-              d->permission = first || d->shape.writable;
-              next.push_back(&d->shape);
+              d->shape = { scql::data::available.get(d->val) };
+              d->permission = first || d->shape[0].writable;
+              for (auto& eee : d->shape)
+                next.push_back(&eee);
             } else if (! first && cur.size() == 1) {
               // This is an assignment.
-              d->shape = *cur[0];
-              next.push_back(&d->shape);
+              d->shape =  { *cur[0] };
+              for (auto& eee : d->shape)
+                next.push_back(&eee);
             } else
               next.push_back(nullptr);
           } else if (ee->is(id_type::fcall)) {
@@ -276,8 +282,9 @@ namespace scql {
                     f->errmsg = s;
                   }
                 } else {
-                  f->shape = std::get<data::schema>(oshape);
-                  next.push_back(&f->shape);
+                  f->shape = std::get<std::vector<data::schema>>(oshape);
+                  for (auto& eee : f->shape)
+                    next.push_back(&eee);
                 }
               }
             }
@@ -287,9 +294,16 @@ namespace scql {
       }
       first = false;
       cur = std::move(next);
+
+      for (auto ps : cur)
+        if (ps)
+          stmts->shape.emplace_back(*ps);
+        else
+          stmts->shape.emplace_back();
     }
-    if (cur.size() == 1 && cur[0] != nullptr)
-      pl->shape = *cur[0];
+
+    if (! pl->l.empty() && ! pl->l.back()->shape.empty())
+      p->shape = pl->l.back()->shape;
   }
 
 
@@ -297,9 +311,9 @@ namespace scql {
   {
     switch (p->id) {
     case id_type::datacell:
-      return p->shape && p->errmsg.empty();
+      return ! p->shape.empty() && p->errmsg.empty();
     case id_type::fcall:
-      return as<fcall>(p)->fname->is(id_type::ident) && as<fcall>(p)->known && p->shape;
+      return as<fcall>(p)->fname->is(id_type::ident) && as<fcall>(p)->known && ! p->shape.empty();
     case id_type::pipeline:
       if (as<pipeline>(p)->l.empty())
         return false;
