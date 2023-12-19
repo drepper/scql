@@ -1,5 +1,7 @@
 #include "code.hh"
 
+#include <algorithm>
+#include <cerrno>
 #include <format>
 #include <utility>
 
@@ -78,23 +80,51 @@ namespace scql::code {
     };
 
 
-#if 0
-    std::variant<data::schema,std::string> zip_output_shape(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::variant<std::vector<data::schema>,std::string> zip_output_shape(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
     {
       if (! args.empty())
         return "zip does not expect arguments"s;
+
+      size_t idx = 0;
+      while (idx < in_schema[0]->dimens.size()) {
+        if (std::ranges::any_of(in_schema, [idx, v = in_schema[0]->dimens[idx]](const auto& e) { return idx >= e->dimens.size() || e->dimens[idx] != v; }))
+          break;
+        ++idx;
+      }
+
+      if (idx == 0)
+        return "no common dimensionality";
+
+      data::schema res;
+
+      for (size_t i = 0; i < idx; ++i)
+        res.dimens.push_back(in_schema[0]->dimens[i]);
+
+      for (const auto s : in_schema)
+        for (const auto& c : s->columns) {
+          auto& n = res.columns.emplace_back(c);
+          for (size_t i = idx; i < s->dimens.size(); ++i)
+            n.dimens.insert(n.dimens.begin() + (i - idx), s->dimens[i]);
+          while (n.dimens.size() > 1 && n.dimens.back() == 1)
+            n.dimens.pop_back();
+        }
+
+      return std::vector { res };
     }
 
-    data::schema zip(const data::schema* in_schema, const std::vector<part::cptr_type>& args)
+    std::vector<data::schema> zip(const std::vector<data::schema*>& in_schema, const std::vector<part::cptr_type>& args)
     {
-      return *in_schema;
+      (void) args;
+      std::vector<data::schema> res;
+      for (const auto p : in_schema)
+        res.emplace_back(*p);
+      return res;
     }
 
     function zip_info {
       zip_output_shape,
       zip
     };
-#endif
 
 
   } // anonymous namespace
@@ -104,7 +134,7 @@ namespace scql::code {
   : known { }
   {
     known.emplace_back(std::make_tuple("reshape"s, &reshape_info));
-    // known.emplace_back(std::make_tuple("zip"s, &zip_info));
+    known.emplace_back(std::make_tuple("zip"s, &zip_info));
   }
 
 
