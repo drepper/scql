@@ -59,6 +59,7 @@ KNOWN_COMBINATORS = {
   'D₂': 'λabcde.a(bc)(de)',
   'E': 'λabcde.ab(cde)',
   'Ψ': 'λabcd.a(bc)(bd)',
+  'T': 'λab.ba',
 }
 
 
@@ -136,7 +137,7 @@ class Constant(Obj):
 
 
 class Application(Obj):
-  def __init__(self, ls):
+  def __init__(self, ls: List[Obj]):
     super().__init__(Type.CALL)
     self.code = (ls[0].code + ls[1:]) if ls and ls[0].is_a(Type.CALL) else ls
     assert self.code
@@ -158,7 +159,10 @@ class Application(Obj):
     la = self.code[0]
     r = la.code.replace(la.params[0], self.code[1])
     if len(la.params) == 1:
-      return r
+      if len(self.code) < 3:
+        return r
+      else:
+        return Application([r] + self.code[2:]).beta()
     return apply([Lambda(la.params[1:], la.ctx, r)] + self.code[2:])
 
 
@@ -319,8 +323,10 @@ def check() -> int:
     ['D B', 'B₁'],
     ['D B₁', 'B₂'],
     ['B D B', 'B₃'],
-    # ['S(K S)K', 'B'],
-    # ['B₁ S B', 'Φ'],
+    ['S(B B S)(K K)', 'C'],
+    ['C I', 'T'],
+    ['S(K S)K', 'B'],
+    ['B₁ S B', 'Φ'],
     # ['B (Φ B S) K K', 'Ψ'],
   ]
   ec = 0
