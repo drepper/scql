@@ -161,8 +161,7 @@ class Application(Obj):
     if len(la.params) == 1:
       if len(self.code) < 3:
         return r
-      else:
-        return Application([r] + self.code[2:]).beta()
+      return Application([r] + self.code[2:]).beta()
     return apply([Lambda(la.params[1:], la.ctx, r)] + self.code[2:])
 
 
