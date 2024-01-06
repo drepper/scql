@@ -63,17 +63,18 @@ KNOWN_COMBINATORS = {
 }
 
 
-def known_name(la: str) -> str:
-  for name, lstr in KNOWN_COMBINATORS.items():
-    if lstr == la:
-      if args.tracing: # pylint: disable=used-before-assignment
-        print(f'→ {la}')
-      return name
-  return la
-
-
 def remove_braces(s: str) -> str:
   return s[1:-1] if s and s[0] == '(' and s[-1] == ')' else s
+
+
+def known_name(la: str) -> str:
+  lar = remove_braces(la)
+  for name, lstr in KNOWN_COMBINATORS.items():
+    if lstr == lar:
+      if args.tracing: # pylint: disable=used-before-assignment
+        print(f'→ {lar}')
+      return name
+  return la
 
 
 class Obj:
@@ -331,6 +332,7 @@ def check() -> int:
     ['S(K S)K', 'B'],
     ['B₁ S B', 'Φ'],
     ['B Φ Φ', 'Φ₁'],
+    ['B (Φ B S) K K', 'C'],
     # ['B (Φ B S) K K', 'Ψ'],
   ]
   ec = 0

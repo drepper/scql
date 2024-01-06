@@ -22,3 +22,4 @@ jobs:
       run: |
         python dataobj.py
         python storage.py
+        python combinator.py --check
