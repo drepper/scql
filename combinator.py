@@ -142,7 +142,7 @@ class Application(Obj):
     assert self.code
 
   def __str__(self):
-    return f'{{App {' '.join([str(a) for a in self.code])}}}' # pylint: disable=syntax-error
+    return f'{{App {' '.join([str(a) for a in self.code])}}}'
 
   def fmt(self, varmap: Naming) -> str:
     return f'({''.join([a.fmt(varmap) for a in self.code]).rstrip()})'
