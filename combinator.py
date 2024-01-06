@@ -185,7 +185,7 @@ class Lambda(Obj):
   def fmt(self, varmap: Naming) -> str:
     # It is important to process the params first to ensure correct naming of parameter variables
     paramstr = ''.join([a.fmt(varmap) for a in self.params])
-    return known_name(f'λ{paramstr}.{remove_braces(self.code.fmt(varmap))}')
+    return known_name(f'(λ{paramstr}.{remove_braces(self.code.fmt(varmap))})')
 
   def replace(self, v: Var, expr: Obj) -> Obj:
     assert v.is_a(Type.VAR)
@@ -290,13 +290,17 @@ def evalstr(s: str) -> Obj:
   return expr
 
 
+def to_string(expr: Obj) -> str:
+  return remove_braces(expr.fmt(Naming()))
+
+
 def handle(al: List[str]) -> int:
   ec = 0
   for a in al:
     print('\u2501' * 48 + '\n' + a)
     try:
       expr = evalstr(a)
-      print(f'⇒ {expr.fmt(Naming())}')
+      print(f'⇒ {to_string(expr)}')
     except SyntaxError as e:
       print(f'eval("{a}") failed: {e.args[0]}')
       ec = 1
@@ -331,7 +335,7 @@ def check() -> int:
   ]
   ec = 0
   for c in checks:
-    res = evalstr(c[0]).fmt(Naming())
+    res = to_string(evalstr(c[0]))
     if res != c[1]:
       if c[1] in KNOWN_COMBINATORS:
         print(f'❌ {c[0]} → {res} but {c[1]} = {KNOWN_COMBINATORS[c[1]]} expected')
