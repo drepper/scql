@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import enum
 import sys
-from typing import ClassVar, Dict, List, Tuple
+from typing import ClassVar, Dict, List, override, Tuple
 
 
 def charcnt(s: str, c: str) -> int:
@@ -94,6 +94,9 @@ class Obj:
     assert v.is_a(Type.VAR)
     return self
 
+  def duplicate(self) -> Obj:
+    return self
+
 
 class Var(Obj):
   varcnt: ClassVar[int] = 1
@@ -103,24 +106,29 @@ class Var(Obj):
     self.id = Var.varcnt
     Var.varcnt += 1
 
+  @override
   def __str__(self):
     return f'{{var {self.id}}}'
 
+  @override
   def fmt(self, varmap: Naming) -> str:
     return varmap.get(self)
 
+  @override
   def replace(self, v: Var, expr: Obj) -> Obj:
     assert v.is_a(Type.VAR)
-    return expr if v.id == self.id else self
+    return expr.duplicate() if v.id == self.id else self
 
 
 class Empty(Obj):
   def __init__(self):
     super().__init__(Type.EMPTY)
 
+  @override
   def __str__(self):
     return '{}'
 
+  @override
   def fmt(self, varmap: Naming) -> str:
     return '○'
 
@@ -130,9 +138,11 @@ class Constant(Obj):
     super().__init__(Type.CONST)
     self.name = name
 
+  @override
   def __str__(self):
     return f'{{const {self.name}}}'
 
+  @override
   def fmt(self, varmap: Naming) -> str:
     return f'{self.name} '
 
@@ -140,34 +150,40 @@ class Constant(Obj):
 class Application(Obj):
   def __init__(self, ls: List[Obj]):
     super().__init__(Type.CALL)
+    assert len(ls) >= 2
     self.code = (ls[0].code + ls[1:]) if ls and ls[0].is_a(Type.CALL) else ls
     assert self.code
 
+  @override
   def __str__(self):
     return f'{{App {' '.join([str(a) for a in self.code])}}}'
 
+  @override
   def fmt(self, varmap: Naming) -> str:
     return f'({''.join([a.fmt(varmap) for a in self.code]).rstrip()})'
 
+  @override
   def replace(self, v: Var, expr: Obj) -> Obj:
     assert v.is_a(Type.VAR)
     assert self.code
     return apply([e.replace(v, expr) for e in self.code])
 
+  @override
+  def duplicate(self) -> Obj:
+    return Application([e.duplicate() for e in self.code])
+
   def beta(self) -> Obj:
-    if not self.code[0].is_a(Type.LAMBDA) or len(self.code) < 2:
+    if not self.code[0].is_a(Type.LAMBDA):
       return self
-    la = self.code[0]
+    la: Lambda = self.code[0]
     r = la.code.replace(la.params[0], self.code[1])
-    if len(la.params) == 1:
-      if len(self.code) < 3:
-        return r
-      return Application([r] + self.code[2:]).beta()
-    return apply([Lambda(la.params[1:], la.ctx, r)] + self.code[2:])
+    if len(la.params) > 1:
+      r = Lambda(la.params[1:], la.ctx, r)
+    return apply([r] + self.code[2:])
 
 
 class Lambda(Obj):
-  def __init__(self, params: List[Var], ctx, code):
+  def __init__(self, params: List[Var], ctx: Dict[str, Var], code: Obj):
     super().__init__(Type.LAMBDA)
     if not params:
       raise SyntaxError('lambda parameter list cannot be empty')
@@ -180,17 +196,28 @@ class Lambda(Obj):
       self.ctx = ctx
       self.code = code
 
+  @override
   def __str__(self):
     return f'{{lambda {' '.join([str(a) for a in self.params])}.{str(self.code)}}}'
 
+  @override
   def fmt(self, varmap: Naming) -> str:
     # It is important to process the params first to ensure correct naming of parameter variables
     paramstr = ''.join([a.fmt(varmap) for a in self.params])
     return known_name(f'(λ{paramstr}.{remove_braces(self.code.fmt(varmap))})')
 
+  @override
   def replace(self, v: Var, expr: Obj) -> Obj:
     assert v.is_a(Type.VAR)
     return Lambda(self.params, self.ctx, self.code.replace(v, expr))
+
+  @override
+  def duplicate(self) -> Obj:
+    newparams = [Var() for _ in self.params]
+    newcode = self.code
+    for o,n in zip(self.params, newparams):
+      newcode = newcode.replace(o, n)
+    return Lambda(newparams, self.ctx, newcode)
 
 
 def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
@@ -284,7 +311,7 @@ def parse_top(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
   return apply(res), s
 
 
-def evalstr(s: str) -> Obj:
+def from_string(s: str) -> Obj:
   expr, ss = parse_top(s, {})
   if ss:
     raise SyntaxError(f'cannot parse {s}: left over {ss}')
@@ -300,7 +327,7 @@ def handle(al: List[str]) -> int:
   for a in al:
     print('\u2501' * 48 + '\n' + a)
     try:
-      expr = evalstr(a)
+      expr = from_string(a)
       print(f'⇒ {to_string(expr)}')
     except SyntaxError as e:
       print(f'eval("{a}") failed: {e.args[0]}')
@@ -333,11 +360,11 @@ def check() -> int:
     ['B₁ S B', 'Φ'],
     ['B Φ Φ', 'Φ₁'],
     ['B (Φ B S) K K', 'C'],
-    # ['B (Φ B S) K K', 'Ψ'],
+    ['B(S Φ C B)B', 'Ψ'],
   ]
   ec = 0
   for c in checks:
-    res = to_string(evalstr(c[0]))
+    res = to_string(from_string(c[0]))
     if res != c[1]:
       if c[1] in KNOWN_COMBINATORS:
         print(f'❌ {c[0]} → {res} but {c[1]} = {KNOWN_COMBINATORS[c[1]]} expected')
