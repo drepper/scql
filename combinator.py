@@ -130,9 +130,6 @@ class Var(Obj):
     self.id = Var.varcnt
     Var.varcnt += 1
 
-  def __eq__(self, other):
-    return type(other) == Var and self.id == other.id
-
   @override
   def is_free(self, v: Var) -> bool:
     return self.id == v.id
