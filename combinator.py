@@ -84,6 +84,9 @@ class Obj:
   def is_a(self, t: Type) -> bool:
     return self.t == t
 
+  def is_free(self, v: Var) -> bool: # pylint: disable=unused-argument
+    return False
+
   def __str__(self) -> str:
     raise NotImplementedError('__str__ called for Obj')
 
@@ -105,6 +108,10 @@ class Var(Obj):
     super().__init__(Type.VAR)
     self.id = Var.varcnt
     Var.varcnt += 1
+
+  @override
+  def is_free(self, v: Var) -> bool:
+    return self.id == v.id
 
   @override
   def __str__(self):
@@ -155,6 +162,10 @@ class Application(Obj):
     assert self.code
 
   @override
+  def is_free(self, v: Var) -> bool:
+    return all(e.is_free(v) for e in self.code)
+
+  @override
   def __str__(self):
     return f'{{App {' '.join([str(a) for a in self.code])}}}'
 
@@ -178,7 +189,7 @@ class Application(Obj):
     la: Lambda = self.code[0]
     r = la.code.replace(la.params[0], self.code[1])
     if len(la.params) > 1:
-      r = Lambda(la.params[1:], la.ctx, r)
+      r = newlambda(la.params[1:], la.ctx, r)
     return apply([r] + self.code[2:])
 
 
@@ -197,6 +208,10 @@ class Lambda(Obj):
       self.code = code
 
   @override
+  def is_free(self, v: Var) -> bool:
+    return all(e.is_free(v) for e in self.code)
+
+  @override
   def __str__(self):
     return f'{{lambda {' '.join([str(a) for a in self.params])}.{str(self.code)}}}'
 
@@ -209,7 +224,7 @@ class Lambda(Obj):
   @override
   def replace(self, v: Var, expr: Obj) -> Obj:
     assert v.is_a(Type.VAR)
-    return Lambda(self.params, self.ctx, self.code.replace(v, expr))
+    return newlambda(self.params, self.ctx, self.code.replace(v, expr))
 
   @override
   def duplicate(self) -> Obj:
@@ -217,7 +232,7 @@ class Lambda(Obj):
     newcode = self.code
     for o,n in zip(self.params, newparams):
       newcode = newcode.replace(o, n)
-    return Lambda(newparams, self.ctx, newcode)
+    return newlambda(newparams, self.ctx, newcode)
 
 
 def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
@@ -233,7 +248,7 @@ def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
     params.append(recctx[s[0]])
     s = s[1:]
   body, s = parse_top(s[1:], recctx)
-  return Lambda(params, recctx, body), s
+  return newlambda(params, recctx, body), s
 
 
 def parse_paren(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
@@ -291,6 +306,12 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
       raise SyntaxError(f'cannot parse {s}')
 
 
+def newlambda(params: List[Var], ctx: Dict[str, Var], code: Obj):
+  if len(params) == 1 and code.is_a(Type.CALL) and len(code.code) == 2 and not code.code[0].is_free(params[0]) and code.code[1] == params[0]:
+    return code.code[0]
+  return Lambda(params, ctx, code)
+
+
 def apply(li: List[Obj]) -> Obj:
   if len(li) < 2:
     res = li[0] if li else Empty()
@@ -319,7 +340,7 @@ def from_string(s: str) -> Obj:
 
 
 def to_string(expr: Obj) -> str:
-  return remove_braces(expr.fmt(Naming()))
+  return remove_braces(expr.fmt(Naming())).rstrip()
 
 
 def handle(al: List[str]) -> int:
@@ -361,6 +382,7 @@ def check() -> int:
     ['B Φ Φ', 'Φ₁'],
     ['B (Φ B S) K K', 'C'],
     ['B(S Φ C B)B', 'Ψ'],
+    ['λx.NotX x', 'NotX'],
   ]
   ec = 0
   for c in checks:
