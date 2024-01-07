@@ -60,6 +60,27 @@ KNOWN_COMBINATORS = {
   'E': 'λabcde.ab(cde)',
   'Ψ': 'λabcd.a(bc)(bd)',
   'T': 'λab.ba',
+  'M': 'λa.aa',
+  'G': 'λabcd.ad(bc)',
+  'F': 'λabc.cba',
+  'H': 'λabc.abcb',
+  'J': 'λabcd.ab(adc)',
+  'L': 'λab.a(bb)',
+  'M₂': 'λab.ab(ab)',
+  'O': 'λab.b(ab)',
+  'Q': 'λabc.b(ac)',
+  'Q₁': 'λabc.a(cb)',
+  'Q₂': 'λabc.b(ca)',
+  'Q₃': 'λabc.c(ab)',
+  'R': 'λabc.bca',
+  'U': 'λab.b(aab)',
+  'V': 'λabc.cab',
+  'W₁': 'λab.baa',
+  'I*': 'λab.ab',
+  'W*': 'λabc.abcc',
+  'C*': 'λabcd.abdc',
+  'W**': 'λabcd.abcdd',
+  'C**': 'λabcde.abced',
 }
 
 
@@ -108,6 +129,9 @@ class Var(Obj):
     super().__init__(Type.VAR)
     self.id = Var.varcnt
     Var.varcnt += 1
+
+  def __eq__(self, other):
+    return type(other) == Var and self.id == other.id
 
   @override
   def is_free(self, v: Var) -> bool:
@@ -273,7 +297,7 @@ def parse_paren(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
 
 def get_constant(s: str) -> Tuple[Obj, str]:
   i = 0
-  while i < len(s) and s[i].isalnum() and s[i] != 'λ':
+  while i < len(s) and s[i] != ')' and s[i] != '(' and s[i] != '.' and not s[i].isspace() and s[i] != 'λ':
     i += 1
   if s[:i] in KNOWN_COMBINATORS:
     e, ss = parse_top(KNOWN_COMBINATORS[s[:i]], {})
@@ -290,16 +314,9 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
     case '(':
       return parse_paren(s, ctx)
     case c if c in VARIABLE_NAMES:
-      res = []
-      while s and s[0] in VARIABLE_NAMES:
-        if s[0] in ctx:
-          res.append(ctx[s[0]])
-          s = s[1:]
-        else:
-          raise SyntaxError(f'unknown variable {s[0]} in {ctx}')
-      if len(res) == 1:
-        return res[0], s
-      return apply(res), s
+      if s[0] in ctx:
+        return ctx[s[0]], s[1:]
+      raise SyntaxError(f'unknown variable {s[0]} in {ctx}')
     case c if c.isalpha():
       return get_constant(s)
     case _:
@@ -307,7 +324,7 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
 
 
 def newlambda(params: List[Var], ctx: Dict[str, Var], code: Obj):
-  if len(params) == 1 and code.is_a(Type.CALL) and len(code.code) == 2 and not code.code[0].is_free(params[0]) and code.code[1] == params[0]:
+  if code.is_a(Type.CALL) and len(params) + 1 == len(code.code) and params == code.code[1:] and all(not code.code[0].is_free(e) for e in params):
     return code.code[0]
   return Lambda(params, ctx, code)
 
@@ -383,6 +400,29 @@ def check() -> int:
     ['B (Φ B S) K K', 'C'],
     ['B(S Φ C B)B', 'Ψ'],
     ['λx.NotX x', 'NotX'],
+    ['B B C', 'G'],
+    ['E T T E T', 'F'],
+    ['B W (B C)', 'H'],
+    ['B(B C)(W(B C(B(B B B))))', 'J'],
+    ['C B M', 'L'],
+    ['B M', 'M₂'],
+    ['S I', 'O'],
+    ['C B', 'Q'],
+    ['B C B', 'Q₁'],
+    ['C(B C B)', 'Q₂'],
+    ['B T', 'Q₃'],
+    ['B B T', 'R'],
+    ['L O', 'U'],
+    ['B C T', 'V'],
+    ['C(B M R)', 'W'],
+    ['C W', 'W₁'],
+    ['S(S K)', 'I*'],
+    ['B W', 'W*'],
+    ['B C', 'C*'],
+    ['B(B W)', 'W**'],
+    ['B C*', 'C**'],
+    ['λabcd.MMM abcd', 'MMM'],
+    ['λabcd.MMM abdc', 'λabcd.MMM abdc'],
   ]
   ec = 0
   for c in checks:
