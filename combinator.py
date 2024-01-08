@@ -25,7 +25,7 @@ VARIABLE_NAMES = 'abcdefghijklmnopqrstuvwxyz'
 
 class Naming: # pylint: disable=too-few-public-methods
   def __init__(self):
-    self.next = 'a'
+    self.next = VARIABLE_NAMES[0]
     self.known = {}
 
   def get(self, v: Var) -> str:
