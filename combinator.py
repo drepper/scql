@@ -28,8 +28,7 @@ class Naming: # pylint: disable=too-few-public-methods
     self.next = 'a'
     self.known = {}
 
-  def get(self, v):
-    assert v.is_a(Type.VAR)
+  def get(self, v: Var) -> str:
     if v.id not in self.known:
       assert self.next in VARIABLE_NAMES, 'too many variables'
       self.known[v.id] = self.next
@@ -42,45 +41,46 @@ class Naming: # pylint: disable=too-few-public-methods
 
 
 KNOWN_COMBINATORS = {
-  'I': 'λa.a',
-  'K': 'λab.a',
-  'π': 'λab.b',
-  'S': 'λabc.ac(bc)',
   'B': 'λabc.a(bc)',
   'B₁': 'λabcd.a(bcd)',
   'B₂': 'λabcde.a(bcde)',
   'B₃': 'λabcd.a(b(cd))',
-  'Φ': 'λabcd.a(bd)(cd)',
-  'Φ₁': 'λabcde.a(bde)(cde)',
   'C': 'λabc.acb',
-  'W': 'λab.abb',
+  'C*': 'λabcd.abdc',
+  'C**': 'λabcde.abced',
   'D': 'λabcd.ab(cd)',
   'D₁': 'λabcde.abc(de)',
   'D₂': 'λabcde.a(bc)(de)',
   'E': 'λabcde.ab(cde)',
-  'Ψ': 'λabcd.a(bc)(bd)',
-  'T': 'λab.ba',
-  'M': 'λa.aa',
-  'G': 'λabcd.ad(bc)',
+  'Ê': 'λabcdefg.a(bcd)(efg)',
   'F': 'λabc.cba',
+  'G': 'λabcd.ad(bc)',
   'H': 'λabc.abcb',
+  'I': 'λa.a',
+  'I*': 'λab.ab',
   'J': 'λabcd.ab(adc)',
+  'K': 'λab.a',
   'L': 'λab.a(bb)',
+  'M': 'λa.aa',
   'M₂': 'λab.ab(ab)',
   'O': 'λab.b(ab)',
+  'π': 'λab.b',
+  'Φ': 'λabcd.a(bd)(cd)',
+  'Φ₁': 'λabcde.a(bde)(cde)',
+  'Ψ': 'λabcd.a(bc)(bd)',
   'Q': 'λabc.b(ac)',
   'Q₁': 'λabc.a(cb)',
   'Q₂': 'λabc.b(ca)',
   'Q₃': 'λabc.c(ab)',
   'R': 'λabc.bca',
+  'S': 'λabc.ac(bc)',
+  'T': 'λab.ba',
   'U': 'λab.b(aab)',
   'V': 'λabc.cab',
+  'W': 'λab.abb',
   'W₁': 'λab.baa',
-  'I*': 'λab.ab',
   'W*': 'λabc.abcc',
-  'C*': 'λabcd.abdc',
   'W**': 'λabcd.abcdd',
-  'C**': 'λabcde.abced',
 }
 
 
@@ -115,7 +115,6 @@ class Obj:
     raise NotImplementedError('fmt called for Obj')
 
   def replace(self, v: Var, expr: Obj) -> Obj: # pylint: disable=unused-argument
-    assert v.is_a(Type.VAR)
     return self
 
   def duplicate(self) -> Obj:
@@ -144,7 +143,6 @@ class Var(Obj):
 
   @override
   def replace(self, v: Var, expr: Obj) -> Obj:
-    assert v.is_a(Type.VAR)
     return expr.duplicate() if v.id == self.id else self
 
 
@@ -162,7 +160,7 @@ class Empty(Obj):
 
 
 class Constant(Obj):
-  def __init__(self, name):
+  def __init__(self, name: str):
     super().__init__(Type.CONST)
     self.name = name
 
@@ -196,8 +194,6 @@ class Application(Obj):
 
   @override
   def replace(self, v: Var, expr: Obj) -> Obj:
-    assert v.is_a(Type.VAR)
-    assert self.code
     return apply([e.replace(v, expr) for e in self.code])
 
   @override
@@ -244,7 +240,6 @@ class Lambda(Obj):
 
   @override
   def replace(self, v: Var, expr: Obj) -> Obj:
-    assert v.is_a(Type.VAR)
     return newlambda(self.params, self.ctx, self.code.replace(v, expr))
 
   @override
@@ -418,6 +413,7 @@ def check() -> int:
     ['B C', 'C*'],
     ['B(B W)', 'W**'],
     ['B C*', 'C**'],
+    ['B(B B B)(B(B B B))', 'Ê'],
     ['λabcd.MMM abcd', 'MMM'],
     ['λabcd.MMM abdc', 'λabcd.MMM abdc'],
   ]
