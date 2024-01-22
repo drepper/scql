@@ -353,9 +353,7 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
     case '(':
       return parse_paren(s, ctx)
     case c if c in VARIABLE_NAMES:
-      if s[0] in ctx:
-        return ctx[s[0]], s[1:]
-      raise SyntaxError(f'unknown variable {s[0]} in {ctx}')
+      return ctx[s[0]] if s[0] in ctx else Var(), s[1:]
     case c if c.isalpha():
       return get_constant(s)
     case _:
