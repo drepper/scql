@@ -300,8 +300,20 @@ def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
     recctx[s[0]] = Var()
     params.append(recctx[s[0]])
     s = s[1:]
-  body, s = parse_top(s[1:], recctx)
-  return newlambda(params, body), s
+  # The following is basically the loop from parse_top but with a special
+  # handling of whitespaces: they terminate the body.  This is nothing
+  # mandatory from general lambda expression parsing point-of-view.  It is
+  # just an expectation of people using the λ… notation.  A whitespace to
+  # terminate a constant is ignored.  So, an expression using a whitespace
+  # in a lambda body can simply use parenthesis.
+  s = s[1:].strip()
+  body: List[Obj] = []
+  while s:
+    if s[0].isspace():
+      break
+    e, s = parse_one(s, recctx)
+    body.append(e)
+  return newlambda(params, apply(body)), s
 
 
 def parse_paren(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
@@ -360,7 +372,7 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
     case c if c.isalpha():
       return get_constant(s)
     case _:
-      raise SyntaxError(f'cannot parse {s}')
+      raise SyntaxError(f'cannot parse "{s}"')
 
 
 def newlambda(params: List[Var], code: Obj):
@@ -416,18 +428,34 @@ def to_string(expr: Obj) -> str:
   return remove_braces(expr.fmt(Naming())).rstrip()
 
 
-def handle(al: List[str]) -> int:
+def handle(al: List[str], echo: bool) -> int:
   """Loop over given list of strings, parse, simplify, and print the lambda
   expression."""
   ec = 0
   for a in al:
-    print('\u2501' * 48 + '\n' + a)
+    if echo:
+      print(a)
     try:
       expr = from_string(a)
       print(f'⇒ {to_string(expr)}')
     except SyntaxError as e:
       print(f'eval("{a}") failed: {e.args[0]}')
       ec = 1
+    print('\u2501' * 48)
+  return ec
+
+
+def repl() -> int:
+  """This is the REPL."""
+  ec = 0
+  try:
+    while True:
+      s = input('» ')
+      if not s:
+        break
+      ec = ec | handle([s], False)
+  except EOFError:
+    print('')
   return ec
 
 
@@ -485,7 +513,7 @@ def check() -> int:
     ['λabcd.MMM abdc', 'λabcd.MMM abdc'],
   ]
   ec = 0
-  for [testinput,expected] in checks:
+  for testinput, expected in checks:
     res = to_string(from_string(testinput))
     if res != expected:
       if expected in KNOWN_COMBINATORS:
@@ -504,8 +532,10 @@ def main(al: List[str]) -> None:
     # Overwrite eventual user setting
     args.tracing = False
     ec = check()
+  elif al:
+    ec = handle(al, True)
   else:
-    ec = handle(al)
+    ec = repl()
   sys.exit(ec)
 
 
