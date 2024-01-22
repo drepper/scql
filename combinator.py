@@ -341,6 +341,8 @@ def get_constant(s: str) -> Tuple[Obj, str]:
     assert not ss, f'cannot parse {KNOWN_COMBINATORS[s[:i]]}'
   else:
     e = Constant(s[:i])
+  if i < len(s) and s[i].isspace():
+    i += 1
   return e, s[i:]
 
 
