@@ -229,22 +229,20 @@ class Application(Obj):
     la: Lambda = self.code[0]
     r = la.code.replace(la.params[0], self.code[1])
     if len(la.params) > 1:
-      r = newlambda(la.params[1:], la.ctx, r)
+      r = newlambda(la.params[1:], r)
     return apply([r] + self.code[2:])
 
 
 class Lambda(Obj):
   """Object to represent a lambda expression in the lambda expression graph."""
-  def __init__(self, params: List[Var], ctx: Dict[str, Var], code: Obj):
+  def __init__(self, params: List[Var], code: Obj):
     if not params:
       raise SyntaxError('lambda parameter list cannot be empty')
     if code.is_a(Lambda):
       self.params = params + code.params
-      self.ctx = dict(ctx, **code.ctx)
       self.code = code.code
     else:
       self.params = params
-      self.ctx = ctx
       self.code = code
 
   @override
@@ -263,7 +261,7 @@ class Lambda(Obj):
 
   @override
   def replace(self, v: Var, expr: Obj) -> Obj:
-    return newlambda(self.params, self.ctx, self.code.replace(v, expr))
+    return newlambda(self.params, self.code.replace(v, expr))
 
   @override
   def duplicate(self) -> Obj:
@@ -271,7 +269,7 @@ class Lambda(Obj):
     newcode = self.code
     for o,n in zip(self.params, newparams):
       newcode = newcode.replace(o, n)
-    return newlambda(newparams, self.ctx, newcode)
+    return newlambda(newparams, newcode)
 
   @staticmethod
   def known_name(la: str) -> str:
@@ -302,7 +300,7 @@ def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
     params.append(recctx[s[0]])
     s = s[1:]
   body, s = parse_top(s[1:], recctx)
-  return newlambda(params, recctx, body), s
+  return newlambda(params, body), s
 
 
 def parse_paren(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
@@ -364,14 +362,14 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
       raise SyntaxError(f'cannot parse {s}')
 
 
-def newlambda(params: List[Var], ctx: Dict[str, Var], code: Obj):
+def newlambda(params: List[Var], code: Obj):
   """Create a new lambda expression using the given parametesr and body of code.
   But the function also performs η-reduction, i.e., it returns just the function
   expression (first of the application values) in case the resulting lambda would
   just apply the required parameter to the application value in order."""
   if code.is_a(Application) and len(params) + 1 == len(code.code) and params == code.code[1:] and all(not code.code[0].is_free(e) for e in params):
     return code.code[0]
-  return Lambda(params, ctx, code)
+  return Lambda(params, code)
 
 
 def apply(li: List[Obj]) -> Obj:
