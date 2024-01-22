@@ -295,7 +295,7 @@ def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
   while s:
     if s[0] == '.':
       break
-    assert s[0].islower(), f'invalid λ parameters {s[0]}'
+    assert s[0] in VARIABLE_NAMES, f'invalid λ parameters {s[0]}'
     recctx[s[0]] = Var()
     params.append(recctx[s[0]])
     s = s[1:]
