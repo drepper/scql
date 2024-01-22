@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import ClassVar, Dict, List, override, Tuple, Type
+from typing import ClassVar, Dict, List, override, Tuple, Type, Union
 
 
 # These are the characters accepted and used as variable names.  The list
@@ -113,7 +113,7 @@ def remove_braces(s: str) -> str:
 
 class Obj:
   """Base class for node in the graph representation of a lambda expression."""
-  def is_a(self, oc: Type[Application, Lambda]) -> bool:
+  def is_a(self, oc: Union[Type[Application], Type[Lambda]]) -> bool:
     """Check whether a derived object is of a specific type."""
     return isinstance(self, oc)
 
@@ -197,7 +197,7 @@ class Application(Obj):
   expression graph."""
   def __init__(self, ls: List[Obj]):
     assert len(ls) >= 2
-    self.code = (ls[0].code + ls[1:]) if ls and ls[0].is_a(Application) else ls
+    self.code = (ls[0].code + ls[1:]) if ls[0].is_a(Application) else ls
     assert self.code
 
   @override
@@ -350,12 +350,11 @@ def get_constant(s: str) -> Tuple[Obj, str]:
     i += 1
   if s[:i] in KNOWN_COMBINATORS:
     e, ss = parse_top(KNOWN_COMBINATORS[s[:i]], {})
-    assert not ss, f'cannot parse {KNOWN_COMBINATORS[s[:i]]}'
+    if ss:
+      raise SyntaxError(f'cannot parse {KNOWN_COMBINATORS[s[:i]]}')
   else:
     e = Constant(s[:i])
-  if i < len(s) and s[i].isspace():
-    i += 1
-  return e, s[i:]
+  return e, s[i:].lstrip()
 
 
 def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
@@ -436,8 +435,7 @@ def handle(al: List[str], echo: bool) -> int:
     if echo:
       print(a)
     try:
-      expr = from_string(a)
-      print(f'⇒ {to_string(expr)}')
+      print(f'⇒ {to_string(from_string(a))}')
     except SyntaxError as e:
       print(f'eval("{a}") failed: {e.args[0]}')
       ec = 1
