@@ -25,7 +25,7 @@ from __future__ import annotations
 import argparse
 import functools
 import sys
-from typing import cast, ClassVar, Dict, List, override, Tuple, Type, Union
+from typing import cast, ClassVar, Dict, List, override, Tuple
 
 
 # These are the characters accepted and used as variable names.  The list
@@ -114,10 +114,6 @@ def remove_braces(s: str) -> str:
 
 class Obj:
   """Base class for node in the graph representation of a lambda expression."""
-  def is_a(self, oc: Union[Type[Application], Type[Lambda]]) -> bool:
-    """Check whether a derived object is of a specific type."""
-    return isinstance(self, oc)
-
   def is_free(self, v: Var) -> bool: # pylint: disable=unused-argument
     """Test whether this is an object for a free variable.  This is the generic
     implementation."""
@@ -198,7 +194,7 @@ class Application(Obj):
   expression graph."""
   def __init__(self, ls: List[Obj]):
     assert len(ls) >= 2
-    self.code = (cast(Application, ls[0]).code + ls[1:]) if ls[0].is_a(Application) else ls
+    self.code = (ls[0].code + ls[1:]) if isinstance(ls[0], Application) else ls
     assert self.code
 
   @override
@@ -225,7 +221,7 @@ class Application(Obj):
     """Perform beta reduction on the given application.  This is called on a freshly
     created object but the reduction cannot be performed in the constructor because
     the result of the beta reduction can be something other than an application."""
-    if not self.code[0].is_a(Lambda):
+    if not isinstance(self.code[0], Lambda):
       return self
     la = cast(Lambda, self.code[0])
     r = la.code.replace(la.params[0], self.code[1])
@@ -239,9 +235,9 @@ class Lambda(Obj):
   def __init__(self, params: List[Var], code: Obj):
     if not params:
       raise SyntaxError('lambda parameter list cannot be empty')
-    if code.is_a(Lambda):
-      self.params = params + cast(Lambda, code).params
-      self.code = cast(Lambda, code).code
+    if isinstance(code, Lambda):
+      self.params = params + code.params
+      self.code = code.code
     else:
       self.params = params
       self.code = code
@@ -379,9 +375,8 @@ def newlambda(params: List[Var], code: Obj) -> Obj:
   But the function also performs η-reduction, i.e., it returns just the function
   expression (first of the application values) in case the resulting lambda would
   just apply the required parameter to the application value in order."""
-  if code.is_a(Application) and len(params) + 1 == len(cast(Application, code).code) and params == cast(Application, code).code[1:] and \
-     all(not cast(Application, code).code[0].is_free(e) for e in params):
-    return cast(Application, code).code[0]
+  if isinstance(code, Application) and len(params) + 1 == len(code.code) and params == code.code[1:] and all(not code.code[0].is_free(e) for e in params):
+    return code.code[0]
   return Lambda(params, code)
 
 
