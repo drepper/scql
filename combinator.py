@@ -276,11 +276,12 @@ class Lambda(Obj):
     """Determine whether the formatted expressions corresponds to a known combinator
     and return that name.  Otherwise return the original expression."""
     lar = remove_braces(la)
-    for name, lstr in KNOWN_COMBINATORS.items():
-      if lstr == lar:
-        if args.tracing: # pylint: disable=used-before-assignment
-          print(f'→ {lar}')
-        return name
+    try:
+      la = next(k for k, v in KNOWN_COMBINATORS.items() if v == lar)
+      if args.tracing: # pylint: disable=used-before-assignment
+        print(f'→ {lar}')
+    except StopIteration:
+      pass
     return la
 
 
