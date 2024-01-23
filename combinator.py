@@ -137,7 +137,8 @@ class Obj:
 
 
 class Var(Obj):
-  """Object to represent a variable in the lambda expression graph."""
+  """Object to represent a variable in the lambda expression graph.  This implements
+  the de Bruijn notation by representing each new variable with a unique number."""
   varcnt: ClassVar[int] = 1
 
   def __init__(self):
