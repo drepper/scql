@@ -506,6 +506,7 @@ def check() -> int:
     ['B(B B B)(B(B B B))', 'Ê'],
     ['λabcd.MMM abcd', 'MMM'],
     ['λabcd.MMM abdc', 'λabcd.MMM abdc'],
+    ['λabcd.MMM abc', 'λabcd.MMM abc'],
   ]
   ec = 0
   for testinput, expected in checks:
