@@ -23,8 +23,9 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import sys
-from typing import ClassVar, Dict, List, override, Tuple, Type, Union
+from typing import cast, ClassVar, Dict, List, override, Tuple, Type, Union
 
 
 # These are the characters accepted and used as variable names.  The list
@@ -197,7 +198,7 @@ class Application(Obj):
   expression graph."""
   def __init__(self, ls: List[Obj]):
     assert len(ls) >= 2
-    self.code = (ls[0].code + ls[1:]) if ls[0].is_a(Application) else ls
+    self.code = (cast(Application, ls[0]).code + ls[1:]) if ls[0].is_a(Application) else ls
     assert self.code
 
   @override
@@ -226,7 +227,7 @@ class Application(Obj):
     the result of the beta reduction can be something other than an application."""
     if not self.code[0].is_a(Lambda):
       return self
-    la: Lambda = self.code[0]
+    la = cast(Lambda, self.code[0])
     r = la.code.replace(la.params[0], self.code[1])
     if len(la.params) > 1:
       r = newlambda(la.params[1:], r)
@@ -239,15 +240,15 @@ class Lambda(Obj):
     if not params:
       raise SyntaxError('lambda parameter list cannot be empty')
     if code.is_a(Lambda):
-      self.params = params + code.params
-      self.code = code.code
+      self.params = params + cast(Lambda, code).params
+      self.code = cast(Lambda, code).code
     else:
       self.params = params
       self.code = code
 
   @override
   def is_free(self, v: Var) -> bool:
-    return v not in self.params and all(e.is_free(v) for e in self.code)
+    return v not in self.params and self.code.is_free(v)
 
   @override
   def __str__(self):
@@ -266,9 +267,7 @@ class Lambda(Obj):
   @override
   def duplicate(self) -> Obj:
     newparams = [Var() for _ in self.params]
-    newcode = self.code
-    for o,n in zip(self.params, newparams):
-      newcode = newcode.replace(o, n)
+    newcode = functools.reduce(lambda p, o: p.replace(*o), zip(self.params, newparams), self.code)
     return newlambda(newparams, newcode)
 
   @staticmethod
@@ -285,7 +284,7 @@ class Lambda(Obj):
     return la
 
 
-def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Lambda, str]:
+def parse_lambda(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
   """Parse the representation of a lambda definition.  Return the graph
   representation and the remainder of the string not part of the just
   parsed part."""
@@ -375,13 +374,14 @@ def parse_one(s: str, ctx: Dict[str, Var]) -> Tuple[Obj, str]:
       raise SyntaxError(f'cannot parse "{s}"')
 
 
-def newlambda(params: List[Var], code: Obj):
+def newlambda(params: List[Var], code: Obj) -> Obj:
   """Create a new lambda expression using the given parametesr and body of code.
   But the function also performs η-reduction, i.e., it returns just the function
   expression (first of the application values) in case the resulting lambda would
   just apply the required parameter to the application value in order."""
-  if code.is_a(Application) and len(params) + 1 == len(code.code) and params == code.code[1:] and all(not code.code[0].is_free(e) for e in params):
-    return code.code[0]
+  if code.is_a(Application) and len(params) + 1 == len(cast(Application, code).code) and params == cast(Application, code).code[1:] and \
+     all(not cast(Application, code).code[0].is_free(e) for e in params):
+    return cast(Application, code).code[0]
   return Lambda(params, code)
 
 
