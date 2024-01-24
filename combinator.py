@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import os
 import sys
 from typing import cast, ClassVar, Dict, List, override, Tuple
 
@@ -436,7 +437,7 @@ def handle(al: List[str], echo: bool) -> int:
     except SyntaxError as e:
       print(f'eval("{a}") failed: {e.args[0]}')
       ec = 1
-    print('\u2501' * 48)
+    print('\u2501' * os.get_terminal_size()[0])
   return ec
 
 
